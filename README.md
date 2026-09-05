@@ -1,6 +1,6 @@
 # NeyyUI
 
-A single-file, dependency-free UI library for Roblox exploit scripts. Dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls — inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
+A single-file, dependency-free UI library for Roblox UI scripts. Dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls — inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
 
 ```lua
 local NeyyUI = loadstring(game:HttpGet(
