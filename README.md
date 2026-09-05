@@ -259,7 +259,7 @@ Do not silently substitute APIs from other UI libraries such as `Range`, `Curren
 
 ## License & Attribution
 
-NeyyUI is released under the [MIT License](./LICENSE) with an additional (non-binding) attribution request: please keep the in-UI credit label and the copyright notice intact if you fork or redistribute this library. See the `LICENSE` file for details.
+NeyyUI is released under the [MIT License](./LICENSE.md) with an additional (non-binding) attribution request: please keep the in-UI credit label and the copyright notice intact if you fork or redistribute this library. See the `LICENSE` file for details.
 
 Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI  •  github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option — it exists so forks and reposts stay traceable back to the original project.
 
