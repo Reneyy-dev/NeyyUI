@@ -1652,9 +1652,28 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
                 local alpha = math.clamp((control.Value - min) / (max - min), 0, 1)
                 Tween(Runtime, sliderRefs.Fill, duration, {Size = UDim2.new(alpha, 0, 1, 0)})
                 Tween(Runtime, sliderRefs.Knob, duration, {Position = UDim2.new(alpha, 0, 0.5, 0)})
-                sliderRefs.ValueLabel.Text = options.ValueFormat
-                    and string.format(options.ValueFormat, control.Value)
-                    or tostring(control.Value)
+                local valueFormat = options.ValueFormat
+
+                if type(valueFormat) == "string" and valueFormat ~= "" then
+                    if string.find(valueFormat, "{value}", 1, true) then
+                        sliderRefs.ValueLabel.Text = string.gsub(
+                            valueFormat,
+                            "{value}",
+                            tostring(control.Value)
+                        )
+                    else
+                        local ok, formatted = pcall(
+                            string.format,
+                            valueFormat,
+                            control.Value
+                        )
+
+                        sliderRefs.ValueLabel.Text =
+                            ok and formatted or tostring(control.Value)
+                    end
+                else
+                    sliderRefs.ValueLabel.Text = tostring(control.Value)
+                end
             end
 
             function control:Set(value, silent)
