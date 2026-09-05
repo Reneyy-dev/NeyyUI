@@ -400,7 +400,7 @@ local function BuildCredit(ui, theme)
     ui.CreditLabel.AnchorPoint = Vector2.new(0.5, 1)
     ui.CreditLabel.Position = UDim2.new(0.5, 0, 1, -4)
     ui.CreditLabel.BackgroundTransparency = 1
-    ui.CreditLabel.Text = "NeyyUI  \u2022  github.com/Reneyy-dev/NeyyUI"
+    ui.CreditLabel.Text = "NeyyUI  •  github.com/Reneyy-dev/NeyyUI"
     ui.CreditLabel.TextColor3 = theme.Muted
     ui.CreditLabel.TextTransparency = 0.35
     ui.CreditLabel.Font = Enum.Font.GothamMedium
