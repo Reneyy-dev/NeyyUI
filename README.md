@@ -62,7 +62,7 @@ Section:CreateButton({
 })
 ```
 
-See [`NeyyUI_Example.lua`](./NeyyUI_Example.lua) in this repo for a full working demo covering every component.
+See [`Example.lua`](./Example.lua) in this repo for a full working demo covering every component.
 
 ---
 
@@ -122,9 +122,10 @@ Returns a `Section`. Every control below is a method on `Section`, all following
 
 ```
 NeyyUI/
-├── NeyyUI.lua          # The library itself — everything lives in this one file
-├── NeyyUI_Example.lua  # Full usage demo covering every component
-└── README.md           # This file
+├── NeyyUI.lua    # The library itself — everything lives in this one file
+├── Example.lua   # Full usage demo covering every component
+├── LICENSE       # MIT License + attribution notice
+└── README.md     # This file
 ```
 
 There's intentionally no build step or multi-file split — the whole point is that anyone can `loadstring` one raw URL and get the whole library.
@@ -152,6 +153,14 @@ Section:CreateButton({ Name = "Buy", Icon = "rbxassetid://1234567890" })
 - Internal helpers (`Tween`, `Track`, `SafeCallback`, `NewCorner`, `NewStroke`, `SpawnClickBurst`, etc.) are local to the file and reused across every control — follow the same pattern (`options` table in → `control` table with `:Set/:Get` out) when adding new components.
 - `Runtime.Alive` must be checked before touching any GUI instance in async code (tweens, `task.spawn`, input callbacks) since the window can be destroyed/re-executed at any time.
 - Config/flag saving (persisting control values to a file) is a planned addition, not yet implemented.
+
+---
+
+## License & Attribution
+
+NeyyUI is released under the [MIT License](./LICENSE) with an additional (non-binding) attribution request: please keep the in-UI credit label and the copyright notice intact if you fork or redistribute this library. See the `LICENSE` file for details.
+
+Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI · github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option — it exists so forks and reposts stay traceable back to the original project.
 
 ---
 
