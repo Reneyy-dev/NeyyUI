@@ -13,6 +13,8 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 local ENV = (getgenv and getgenv()) or _G
@@ -116,6 +118,503 @@ local function GetGuiParent()
 
     return LocalPlayer:WaitForChild("PlayerGui")
 end
+
+-- ==============================================================================
+-- INTRO SPLASH — plays once when this file is loadstring'd, BLOCKS until it
+-- finishes, then the rest of NeyyUI continues loading below.
+-- ==============================================================================
+
+local IntroConfig = {
+    Text = "Neyy Library",
+
+    FontAssetId = "rbxassetid://113086061264643",
+    FallbackFont = Enum.Font.GothamBlack,
+    TextSize = 78,
+
+    TextColor = Color3.fromRGB(245, 248, 255),
+    GlowColor = Color3.fromRGB(0, 214, 255),
+
+    StrokeColor = Color3.fromRGB(166, 172, 184),
+    StrokeHighlight = Color3.fromRGB(225, 229, 236),
+    StrokeDark = Color3.fromRGB(112, 118, 132),
+
+    BackgroundColor = Color3.fromRGB(4, 7, 14),
+    OverlayTransparency = 0.28,
+    GroupYScale = 0.45,
+
+    InitialDelay = 1,
+    OverlayFadeInTime = 0.4,
+    OverlayFadeOutTime = 0.45,
+
+    EnterStartScale = 0.18,
+    EnterOvershootScale = 1.055,
+    EnterEndScale = 1.0,
+    EnterTweenTime = 0.30,
+    EnterOvershootRatio = 0.56,
+    EnterStagger = 0.055,
+
+    HoldAfterIn = 0.75,
+
+    OutPullShiftX = 10,
+    OutFinalShiftX = 64,
+    OutStagger = 0.045,
+
+    GlowVisibleTransparency = 0.46,
+    GlowHiddenTransparency = 1,
+
+    LetterSpacingPadding = 2,
+    LetterSidePadding = 3,
+    LetterHeightPadding = 12,
+    SpaceWidth = 26,
+
+    StrokeThickness = 2.15,
+    DashCount = 5,
+    DashRatio = 0.54,
+    RotateSpeed = 72,
+    PhaseStep = 47,
+}
+
+local function PlayIntroSplash()
+    for _, parent in ipairs({GetGuiParent(), LocalPlayer:FindFirstChild("PlayerGui"), CoreGui}) do
+        if parent then
+            pcall(function()
+                local existing = parent:FindFirstChild("NeyyIntro")
+                if existing then
+                    existing:Destroy()
+                end
+            end)
+        end
+    end
+
+    local GUI_PARENT = GetGuiParent()
+
+    local IntroCustomFontFace = nil
+    do
+        local ok, fontFace = pcall(function()
+            return Font.new(IntroConfig.FontAssetId)
+        end)
+        if ok and fontFace then
+            IntroCustomFontFace = fontFace
+        end
+    end
+
+    local function TryApplyCustomFont(textObject)
+        if IntroCustomFontFace then
+            local ok = pcall(function()
+                textObject.FontFace = IntroCustomFontFace
+            end)
+            if ok then
+                return
+            end
+        end
+        textObject.Font = IntroConfig.FallbackFont
+    end
+
+    local TextBoundsCache = {}
+
+    local function MeasureText(text)
+        local cached = TextBoundsCache[text]
+        if cached then
+            return cached
+        end
+
+        local result = nil
+
+        if IntroCustomFontFace then
+            local params = Instance.new("GetTextBoundsParams")
+            params.Text = text
+            params.Font = IntroCustomFontFace
+            params.Size = IntroConfig.TextSize
+            params.Width = 10000
+            params.RichText = false
+
+            local ok, bounds = pcall(function()
+                return TextService:GetTextBoundsAsync(params)
+            end)
+            params:Destroy()
+
+            if ok and bounds and bounds.X >= 0 and bounds.Y > 0 then
+                result = bounds
+            end
+        end
+
+        if not result then
+            local ok, bounds = pcall(function()
+                return TextService:GetTextSize(text, IntroConfig.TextSize, IntroConfig.FallbackFont, Vector2.new(10000, 10000))
+            end)
+            if ok and bounds then
+                result = bounds
+            end
+        end
+
+        if not result then
+            result = Vector2.new(math.max(1, IntroConfig.TextSize * 0.55), IntroConfig.TextSize)
+        end
+
+        TextBoundsCache[text] = result
+        return result
+    end
+
+    local LINE_HEIGHT = math.max(IntroConfig.TextSize, math.ceil(MeasureText("Hg").Y))
+
+    local function IntroTween(object, duration, properties, easingStyle, easingDirection)
+        if not object then
+            return nil
+        end
+        local tween = TweenService:Create(
+            object,
+            TweenInfo.new(duration, easingStyle or Enum.EasingStyle.Quad, easingDirection or Enum.EasingDirection.Out),
+            properties
+        )
+        tween:Play()
+        return tween
+    end
+
+    local function IsAlive(instance)
+        return instance ~= nil and instance.Parent ~= nil
+    end
+
+    local function BuildDashSequence(dashCount, dashRatio)
+        dashCount = math.clamp(math.floor(tonumber(dashCount) or 5), 2, 5)
+        dashRatio = math.clamp(tonumber(dashRatio) or 0.5, 0.20, 0.80)
+
+        local segmentSize = 1 / dashCount
+        local keypoints = {}
+
+        for i = 0, dashCount - 1 do
+            local segmentStart = i * segmentSize
+            local segmentEnd = (i + 1) * segmentSize
+            local dashEnd = segmentStart + (segmentSize * dashRatio)
+            local gapLength = segmentEnd - dashEnd
+            local transition = math.min(0.003, segmentSize * 0.04, gapLength * 0.20)
+
+            table.insert(keypoints, NumberSequenceKeypoint.new(segmentStart, 0))
+            table.insert(keypoints, NumberSequenceKeypoint.new(dashEnd, 0))
+
+            if i == dashCount - 1 then
+                table.insert(keypoints, NumberSequenceKeypoint.new(math.min(dashEnd + transition, segmentEnd), 1))
+                table.insert(keypoints, NumberSequenceKeypoint.new(1, 1))
+            else
+                table.insert(keypoints, NumberSequenceKeypoint.new(math.min(dashEnd + transition, segmentEnd), 1))
+                table.insert(keypoints, NumberSequenceKeypoint.new(segmentEnd - transition, 1))
+            end
+        end
+
+        return NumberSequence.new(keypoints)
+    end
+
+    local DASH_SEQUENCE = BuildDashSequence(IntroConfig.DashCount, IntroConfig.DashRatio)
+
+    local function AddStroke(target, initialRotation)
+        local stroke = Instance.new("UIStroke")
+        stroke.Name = "SilverStroke"
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+        stroke.Thickness = IntroConfig.StrokeThickness
+        stroke.Color = IntroConfig.StrokeColor
+        stroke.Transparency = 1
+        stroke.Parent = target
+
+        local gradient = Instance.new("UIGradient")
+        gradient.Name = "StrokeDash"
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, IntroConfig.StrokeDark),
+            ColorSequenceKeypoint.new(0.28, IntroConfig.StrokeHighlight),
+            ColorSequenceKeypoint.new(0.55, IntroConfig.StrokeColor),
+            ColorSequenceKeypoint.new(0.78, IntroConfig.StrokeHighlight),
+            ColorSequenceKeypoint.new(1, IntroConfig.StrokeDark),
+        })
+        gradient.Transparency = DASH_SEQUENCE
+        gradient.Rotation = initialRotation or 0
+        gradient.Parent = stroke
+
+        return stroke, gradient
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "NeyyIntro"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 999999
+    ScreenGui.Parent = GUI_PARENT
+
+    local Overlay = Instance.new("Frame")
+    Overlay.Name = "Overlay"
+    Overlay.Size = UDim2.fromScale(1, 1)
+    Overlay.BackgroundColor3 = IntroConfig.BackgroundColor
+    Overlay.BackgroundTransparency = 1
+    Overlay.BorderSizePixel = 0
+    Overlay.Parent = ScreenGui
+
+    local IntroRoot = Instance.new("Frame")
+    IntroRoot.Name = "IntroRoot"
+    IntroRoot.AnchorPoint = Vector2.new(0.5, 0.5)
+    IntroRoot.Position = UDim2.fromScale(0.5, IntroConfig.GroupYScale)
+    IntroRoot.Size = UDim2.fromOffset(1200, 180)
+    IntroRoot.BackgroundTransparency = 1
+    IntroRoot.Parent = Overlay
+
+    local function CreateLetterGroup()
+        local group = Instance.new("Frame")
+        group.Name = "LetterGroup"
+        group.BackgroundTransparency = 1
+        group.Size = UDim2.fromScale(1, 1)
+        group.AnchorPoint = Vector2.new(0.5, 0.5)
+        group.Position = UDim2.fromScale(0.5, 0.5)
+        group.Parent = IntroRoot
+
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, IntroConfig.LetterSpacingPadding)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = group
+
+        return group
+    end
+
+    local function BuildLetterItems(group, text)
+        local letters = {}
+
+        for i = 1, #text do
+            local char = text:sub(i, i)
+
+            if char == " " then
+                local spacer = Instance.new("Frame")
+                spacer.Name = "Spacer_" .. i
+                spacer.LayoutOrder = i
+                spacer.BackgroundTransparency = 1
+                spacer.Size = UDim2.fromOffset(IntroConfig.SpaceWidth, LINE_HEIGHT + IntroConfig.LetterHeightPadding)
+                spacer.Parent = group
+            else
+                local letterBounds = MeasureText(char)
+                local holderWidth = math.max(1, math.ceil(letterBounds.X) + (IntroConfig.LetterSidePadding * 2))
+                local holderHeight = LINE_HEIGHT + IntroConfig.LetterHeightPadding
+
+                local holder = Instance.new("Frame")
+                holder.Name = "Letter_" .. i
+                holder.LayoutOrder = i
+                holder.BackgroundTransparency = 1
+                holder.Size = UDim2.fromOffset(holderWidth, holderHeight)
+                holder.ClipsDescendants = false
+                holder.Parent = group
+
+                local glow = Instance.new("TextLabel")
+                glow.Name = "Glow"
+                glow.BackgroundTransparency = 1
+                glow.Size = UDim2.fromScale(1, 1)
+                glow.Position = UDim2.fromScale(0.5, 0.5)
+                glow.AnchorPoint = Vector2.new(0.5, 0.5)
+                glow.Text = char
+                glow.TextColor3 = IntroConfig.GlowColor
+                glow.TextTransparency = IntroConfig.GlowHiddenTransparency
+                glow.TextSize = IntroConfig.TextSize
+                glow.TextWrapped = false
+                glow.ZIndex = 1
+                TryApplyCustomFont(glow)
+                glow.Parent = holder
+
+                local main = Instance.new("TextLabel")
+                main.Name = "Main"
+                main.BackgroundTransparency = 1
+                main.Size = UDim2.fromScale(1, 1)
+                main.Position = UDim2.fromScale(0.5, 0.5)
+                main.AnchorPoint = Vector2.new(0.5, 0.5)
+                main.Text = char
+                main.TextColor3 = IntroConfig.TextColor
+                main.TextTransparency = 1
+                main.TextSize = IntroConfig.TextSize
+                main.TextWrapped = false
+                main.ZIndex = 2
+                TryApplyCustomFont(main)
+                main.Parent = holder
+
+                local fillGradient = Instance.new("UIGradient")
+                fillGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(0.55, Color3.fromRGB(238, 248, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(202, 230, 255)),
+                })
+                fillGradient.Rotation = 90
+                fillGradient.Parent = main
+
+                local initialPhase = (i * IntroConfig.PhaseStep) % 360
+                local stroke, strokeGradient = AddStroke(main, initialPhase)
+
+                local enterScale = Instance.new("UIScale")
+                enterScale.Name = "LetterScale"
+                enterScale.Scale = IntroConfig.EnterStartScale
+                enterScale.Parent = holder
+
+                table.insert(letters, {
+                    Holder = holder,
+                    Glow = glow,
+                    Label = main,
+                    Scale = enterScale,
+                    Stroke = stroke,
+                    StrokeGradient = strokeGradient,
+                    StrokePhase = initialPhase,
+                })
+            end
+        end
+
+        return letters
+    end
+
+    local function GetOutScale(guiObject)
+        local scale = guiObject:FindFirstChild("OutScale")
+        if scale and scale:IsA("UIScale") then
+            return scale
+        end
+        scale = Instance.new("UIScale")
+        scale.Name = "OutScale"
+        scale.Scale = 1
+        scale.Parent = guiObject
+        return scale
+    end
+
+    local function StartStrokeRotationLoop(letters)
+        return RunService.Heartbeat:Connect(function(dt)
+            local rotationDelta = dt * IntroConfig.RotateSpeed
+            for _, item in ipairs(letters) do
+                local gradient = item.StrokeGradient
+                if gradient and gradient.Parent then
+                    item.StrokePhase = (item.StrokePhase + rotationDelta) % 360
+                    gradient.Rotation = item.StrokePhase
+                end
+            end
+        end)
+    end
+
+    local function AnimateLetterIn(item)
+        if not IsAlive(item.Holder) then
+            return
+        end
+
+        item.Scale.Scale = IntroConfig.EnterStartScale
+        item.Label.TextTransparency = 1
+        item.Glow.TextTransparency = IntroConfig.GlowHiddenTransparency
+        item.Stroke.Transparency = 1
+        item.Stroke.Thickness = IntroConfig.StrokeThickness
+
+        local overshootTime = IntroConfig.EnterTweenTime * IntroConfig.EnterOvershootRatio
+        local settleTime = IntroConfig.EnterTweenTime - overshootTime
+
+        IntroTween(item.Label, IntroConfig.EnterTweenTime * 0.72, {TextTransparency = 0}, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        IntroTween(item.Glow, IntroConfig.EnterTweenTime * 0.78, {TextTransparency = IntroConfig.GlowVisibleTransparency}, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        IntroTween(item.Stroke, IntroConfig.EnterTweenTime * 0.78, {Transparency = 0}, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+        local overshootTween = IntroTween(item.Scale, overshootTime, {Scale = IntroConfig.EnterOvershootScale}, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+        task.spawn(function()
+            if not overshootTween then
+                return
+            end
+            local playbackState = overshootTween.Completed:Wait()
+            if playbackState ~= Enum.PlaybackState.Completed then
+                return
+            end
+            if not IsAlive(item.Scale) then
+                return
+            end
+            IntroTween(item.Scale, settleTime, {Scale = IntroConfig.EnterEndScale}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+        end)
+    end
+
+    local function AnimateLetterOut(item)
+        if not IsAlive(item.Holder) then
+            return
+        end
+
+        item.Scale.Scale = 1
+        item.Label.Position = UDim2.fromScale(0.5, 0.5)
+        item.Glow.Position = UDim2.fromScale(0.5, 0.5)
+
+        local labelScale = GetOutScale(item.Label)
+        local glowScale = GetOutScale(item.Glow)
+        labelScale.Scale = 1
+        glowScale.Scale = 1
+
+        local overshootTime = IntroConfig.EnterTweenTime * IntroConfig.EnterOvershootRatio
+        local settleTime = IntroConfig.EnterTweenTime - overshootTime
+
+        task.spawn(function()
+            local stage1Tween = IntroTween(labelScale, settleTime, {Scale = IntroConfig.EnterOvershootScale}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            IntroTween(glowScale, settleTime, {Scale = IntroConfig.EnterOvershootScale}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            IntroTween(item.Label, settleTime, {Position = UDim2.new(0.5, IntroConfig.OutPullShiftX, 0.5, 0)}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            IntroTween(item.Glow, settleTime, {Position = UDim2.new(0.5, IntroConfig.OutPullShiftX, 0.5, 0)}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            IntroTween(item.Stroke, settleTime, {Thickness = IntroConfig.StrokeThickness * 0.90}, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+            if not stage1Tween then
+                return
+            end
+            local playbackState = stage1Tween.Completed:Wait()
+            if playbackState ~= Enum.PlaybackState.Completed then
+                return
+            end
+            if not IsAlive(item.Holder) then
+                return
+            end
+
+            IntroTween(labelScale, overshootTime, {Scale = 0}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+            IntroTween(glowScale, overshootTime, {Scale = 0}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+            IntroTween(item.Label, overshootTime, {Position = UDim2.new(0.5, IntroConfig.OutFinalShiftX, 0.5, 0), TextTransparency = 1}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+            IntroTween(item.Glow, overshootTime, {Position = UDim2.new(0.5, IntroConfig.OutFinalShiftX, 0.5, 0), TextTransparency = 1}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+            IntroTween(item.Stroke, overshootTime * 0.85, {Transparency = 1, Thickness = IntroConfig.StrokeThickness * 0.45}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+        end)
+    end
+
+    local function PlayStaggeredForward(letters, stagger, callback)
+        local total = #letters
+        for index, item in ipairs(letters) do
+            callback(item)
+            if index < total then
+                task.wait(stagger)
+            end
+        end
+    end
+
+    local function PlayStaggeredReverse(letters, stagger, callback)
+        local total = #letters
+        for index = total, 1, -1 do
+            callback(letters[index])
+            if index > 1 then
+                task.wait(stagger)
+            end
+        end
+    end
+
+    task.wait(IntroConfig.InitialDelay)
+
+    IntroTween(Overlay, IntroConfig.OverlayFadeInTime, {BackgroundTransparency = IntroConfig.OverlayTransparency}, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+    local group = CreateLetterGroup()
+    local letters = BuildLetterItems(group, IntroConfig.Text)
+    local heartbeatConn = StartStrokeRotationLoop(letters)
+
+    PlayStaggeredForward(letters, IntroConfig.EnterStagger, AnimateLetterIn)
+    task.wait(IntroConfig.EnterTweenTime)
+
+    task.wait(IntroConfig.HoldAfterIn)
+
+    local outTotalTime = IntroConfig.EnterTweenTime + 0.04
+    PlayStaggeredReverse(letters, IntroConfig.OutStagger, AnimateLetterOut)
+    task.wait(outTotalTime)
+
+    heartbeatConn:Disconnect()
+
+    local fadeOutTween = IntroTween(Overlay, IntroConfig.OverlayFadeOutTime, {BackgroundTransparency = 1}, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+    if fadeOutTween then
+        fadeOutTween.Completed:Wait()
+    end
+
+    ScreenGui:Destroy()
+end
+
+-- Blocking call: script pauses here until the splash finishes, THEN the rest
+-- of NeyyUI (below) continues to load. No separate loader file needed.
+PlayIntroSplash()
 
 local function SafeDisconnect(connection)
     if connection then
