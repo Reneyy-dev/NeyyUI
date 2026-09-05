@@ -1,8 +1,8 @@
-# NeyyUI â€” ValueFormat Compatibility Build
+# NeyyUI — ValueFormat Compatibility Build
 
 This README is aligned with `NeyyUI.lua`, the compatibility build of NeyyUI. It keeps the same single-file, dependency-free UI design while documenting the slider `ValueFormat` syntax explicitly so scripts and AI-generated integrations use the API correctly.
 
-NeyyUI uses a dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls â€” inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
+NeyyUI uses a dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls — inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
 
 ```lua
 local NeyyUI = loadstring(game:HttpGet(
@@ -16,7 +16,7 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ## Features
 
-- **Universal by design** â€” no game-specific logic anywhere in the library. Everything (title, icons, tabs, controls) is configured by the script that loads it.
+- **Universal by design** — no game-specific logic anywhere in the library. Everything (title, icons, tabs, controls) is configured by the script that loads it.
 - **Full component set**: Window, Tab, Section, Button, Toggle, Input, Dropdown, Slider, ColorPicker, Keybind, Stat, Paragraph, Divider.
 - **Visual polish**: animated glitch title, glass blur background, floating liquid blobs, ambient particles, click-punch animation + in-button particle burst on `Button` clicks.
 - **Mobile-first**: auto-scales to viewport size, touch-friendly drag and hit areas on every interactive element.
@@ -28,7 +28,7 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ## Requirements
 
-- A Roblox executor that supports `loadstring`, `game:HttpGet`, and standard `Instance.new` GUI creation (any modern executor â€” Synapse-tier, Fluxus, Wave, Delta, etc.).
+- A Roblox executor that supports `loadstring`, `game:HttpGet`, and standard `Instance.new` GUI creation (any modern executor — Synapse-tier, Fluxus, Wave, Delta, etc.).
 - No external dependencies. No key system, no third-party libraries. Everything lives in one `.lua` file.
 - Optional: `getgenv()` / `gethui()` support (used automatically if available, falls back gracefully otherwise).
 
@@ -38,7 +38,7 @@ local NeyyUI = loadstring(game:HttpGet(
 
 1. Use `NeyyUI_ValueFormatCompat.lua` as the library file (raw-servable from GitHub).
 2. Load `https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua` with `loadstring(game:HttpGet(...))()`.
-3. That's it â€” no build step, no config files needed to get started.
+3. That's it — no build step, no config files needed to get started.
 
 ---
 
@@ -83,18 +83,18 @@ See [`Example_ValueFormatCompat.lua`](./Example_ValueFormatCompat.lua) for a ful
 | `Scale` | number | `0.80` | Base UI scale (auto-clamped to fit small screens) |
 | `Blur` | boolean | `true` | Enable/disable background blur |
 | `BlurStrength` | number | `20` | Blur intensity |
-| `ParticleCount` | number | `22` | Ambient background particles (0â€“30) |
-| `LiquidCount` | number | `4` | Ambient liquid blobs (0â€“6) |
-| `Theme` | table | â€” | Override any `NeyyUI.Theme` color/spacing key |
+| `ParticleCount` | number | `22` | Ambient background particles (0–30) |
+| `LiquidCount` | number | `4` | Ambient liquid blobs (0–6) |
+| `Theme` | table | — | Override any `NeyyUI.Theme` color/spacing key |
 | `RuntimeKey` | string | internal default | Use a custom key to run multiple independent windows at once |
 | `NotifyOnLoad` | boolean | `true` | Show a "loaded" toast automatically |
 | `LoadMessage` | string | `"NeyyUI loaded"` | Text for the load toast |
-| `OnClose` | function | â€” | Called right before the window is destroyed via the close button |
+| `OnClose` | function | — | Called right before the window is destroyed via the close button |
 
 Returns a `Window` object with:
 
-- `Window:CreateTab(config)` â†’ returns a `Tab`
-- `Window:Notify(options)` â€” `{ Content, Type = "Success"|"Error"|"Warning", Duration, Icon, Color }`
+- `Window:CreateTab(config)` → returns a `Tab`
+- `Window:Notify(options)` — `{ Content, Type = "Success"|"Error"|"Warning", Duration, Icon, Color }`
 - `Window:SetTitle(text)`, `Window:SetSubtitle(text)`
 - `Window:Minimize()`, `Window:Restore()`, `Window:IsMinimized()`
 - `Window:Destroy()`
@@ -195,13 +195,13 @@ ValueFormat = "%d studs/s"
 
 ```
 NeyyUI/
-â”œâ”€â”€ NeyyUI_ValueFormatCompat.lua      # Compatibility library build
-â”œâ”€â”€ Example_ValueFormatCompat.lua     # Full usage demo + ValueFormat examples
-â”œâ”€â”€ README_ValueFormatCompat.md       # Documentation for the compatibility build
-â””â”€â”€ LICENSE                           # MIT License + attribution notice
+├── NeyyUI_ValueFormatCompat.lua      # Compatibility library build
+├── Example_ValueFormatCompat.lua     # Full usage demo + ValueFormat examples
+├── README_ValueFormatCompat.md       # Documentation for the compatibility build
+└── LICENSE                           # MIT License + attribution notice
 ```
 
-There's intentionally no build step or multi-file split â€” the whole point is that anyone can `loadstring` one raw URL and get the whole library.
+There's intentionally no build step or multi-file split — the whole point is that anyone can `loadstring` one raw URL and get the whole library.
 
 ---
 
@@ -250,8 +250,8 @@ ValueFormat = "%.1fx"
 
 Do not silently substitute APIs from other UI libraries such as `Range`, `CurrentValue`, `Suffix`, `Minimum`, `Maximum`, `Format`, or Python-style placeholders unless the NeyyUI source explicitly adds support for them.
 
-- The whole library is one Lua chunk returning a single `NeyyUI` table â€” there are no external `require`s.
-- Internal helpers (`Tween`, `Track`, `SafeCallback`, `NewCorner`, `NewStroke`, `SpawnClickBurst`, etc.) are local to the file and reused across every control â€” follow the same pattern (`options` table in â†’ `control` table with `:Set/:Get` out) when adding new components.
+- The whole library is one Lua chunk returning a single `NeyyUI` table — there are no external `require`s.
+- Internal helpers (`Tween`, `Track`, `SafeCallback`, `NewCorner`, `NewStroke`, `SpawnClickBurst`, etc.) are local to the file and reused across every control — follow the same pattern (`options` table in → `control` table with `:Set/:Get` out) when adding new components.
 - `Runtime.Alive` must be checked before touching any GUI instance in async code (tweens, `task.spawn`, input callbacks) since the window can be destroyed/re-executed at any time.
 - Config/flag saving (persisting control values to a file) is a planned addition, not yet implemented.
 
@@ -261,7 +261,7 @@ Do not silently substitute APIs from other UI libraries such as `Range`, `Curren
 
 NeyyUI is released under the [MIT License](./LICENSE) with an additional (non-binding) attribution request: please keep the in-UI credit label and the copyright notice intact if you fork or redistribute this library. See the `LICENSE` file for details.
 
-Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI  â€¢  github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option â€” it exists so forks and reposts stay traceable back to the original project.
+Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI  •  github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option — it exists so forks and reposts stay traceable back to the original project.
 
 ---
 
