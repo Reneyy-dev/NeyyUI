@@ -17,18 +17,6 @@ local LocalPlayer = Players.LocalPlayer
 local ENV = (getgenv and getgenv()) or _G
 local DEFAULT_RUNTIME_KEY = "__NEYY_UI_RUNTIME_V2"
 
-local LIQUID_SPRITE = {
-    Url = "https://res.cloudinary.com/kyj7vvub/image/upload/v1788577252/giphy-sprite-sheet.png",
-    FileName = "neyy_liquid_cloudinary.png",
-    SheetSize = 1024,
-    Grid = 7,
-    FrameCount = 48,
-    FPS = 30,
-    Zoom = 1.70,
-    Transparency = 0.70,
-}
-LIQUID_SPRITE.FrameSize = LIQUID_SPRITE.SheetSize / LIQUID_SPRITE.Grid
-
 local DEFAULT_THEME = {
     WindowWidth = 580,
     WindowHeight = 510,
@@ -59,8 +47,8 @@ local DEFAULT_THEME = {
     BaseScale = 0.80,
     MinScale = 0.58,
 
-    ParticleCount = 18,
-    LiquidCount = 5,
+    ParticleCount = 22,
+    LiquidCount = 4,
 }
 
 local ICONS = {
@@ -221,7 +209,6 @@ local function BuildRuntime(runtimeKey)
         Connections = {},
         Gui = nil,
         Blur = nil,
-        TempFiles = {},
         Key = runtimeKey,
         DestroyReason = nil,
     }
@@ -255,17 +242,6 @@ local function BuildRuntime(runtimeKey)
             end)
         end
 
-        if type(delfile) == "function" then
-            for index = #Runtime.TempFiles, 1, -1 do
-                local path = Runtime.TempFiles[index]
-                Runtime.TempFiles[index] = nil
-                pcall(function()
-                    delfile(path)
-                end)
-            end
-        else
-            table.clear(Runtime.TempFiles)
-        end
 
         if rawget(ENV, runtimeKey) == Runtime then
             ENV[runtimeKey] = nil
@@ -750,62 +726,112 @@ local function BuildEffects(Runtime, ui, theme, config)
     ui.LiquidLayer.ZIndex = 2
     ui.LiquidLayer.Parent = ui.Body
 
-    local customAssetFunction = nil
-    if type(getcustomasset) == "function" then
-        customAssetFunction = getcustomasset
-    elseif type(getsynasset) == "function" then
-        customAssetFunction = getsynasset
-    end
+    local liquidCount = math.clamp(tonumber(config.LiquidCount) or theme.LiquidCount, 0, 6)
+    for index = 1, liquidCount do
+        local blob = Instance.new("Frame")
+        local width = math.random(170, 290)
+        local height = math.random(120, 235)
+        local baseTransparency = 0.84 + math.random() * 0.05
 
-    local liquidAsset = nil
-    if type(writefile) == "function" and customAssetFunction then
-        local ok, result = pcall(function()
-            local bytes = game:HttpGet(LIQUID_SPRITE.Url, true)
-            writefile(LIQUID_SPRITE.FileName, bytes)
-            table.insert(Runtime.TempFiles, LIQUID_SPRITE.FileName)
-            return customAssetFunction(LIQUID_SPRITE.FileName)
-        end)
+        blob.Name = "LiquidBlob" .. index
+        blob.AnchorPoint = Vector2.new(0.5, 0.5)
+        blob.Size = UDim2.fromOffset(width, height)
+        blob.Position = UDim2.new(
+            math.random(8, 92) / 100,
+            0,
+            math.random(10, 90) / 100,
+            0
+        )
+        blob.BackgroundColor3 = index % 2 == 0 and theme.Purple or theme.Cyan
+        blob.BackgroundTransparency = baseTransparency
+        blob.BorderSizePixel = 0
+        blob.Rotation = math.random(-18, 18)
+        blob.Active = false
+        blob.ZIndex = 2
+        blob.Parent = ui.LiquidLayer
+        NewCorner(blob, math.floor(math.min(width, height) / 2))
 
-        if ok then
-            liquidAsset = result
-        else
-            warn("[NeyyUI] Liquid sprite load failed: " .. tostring(result))
-        end
-    else
-        warn("[NeyyUI] Liquid sprite unavailable: executor requires writefile + getcustomasset/getsynasset")
-    end
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, theme.Cyan),
+            ColorSequenceKeypoint.new(0.52, theme.Purple),
+            ColorSequenceKeypoint.new(1, theme.Rose),
+        })
+        gradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.10),
+            NumberSequenceKeypoint.new(0.55, 0.28),
+            NumberSequenceKeypoint.new(1, 0.62),
+        })
+        gradient.Rotation = math.random(0, 359)
+        gradient.Parent = blob
 
-    if liquidAsset then
-        ui.LiquidSprite = Instance.new("ImageLabel")
-        ui.LiquidSprite.Name = "LiquidSprite"
-        ui.LiquidSprite.AnchorPoint = Vector2.new(0.5, 0.5)
-        ui.LiquidSprite.Position = UDim2.fromScale(0.5, 0.5)
-        ui.LiquidSprite.Size = UDim2.fromScale(LIQUID_SPRITE.Zoom, LIQUID_SPRITE.Zoom)
-        ui.LiquidSprite.BackgroundTransparency = 1
-        ui.LiquidSprite.Image = liquidAsset
-        ui.LiquidSprite.ImageTransparency = LIQUID_SPRITE.Transparency
-        ui.LiquidSprite.ScaleType = Enum.ScaleType.Stretch
-        ui.LiquidSprite.ImageRectSize = Vector2.new(LIQUID_SPRITE.FrameSize, LIQUID_SPRITE.FrameSize)
-        ui.LiquidSprite.ImageRectOffset = Vector2.new(0, 0)
-        ui.LiquidSprite.Active = false
-        ui.LiquidSprite.ZIndex = 2
-        ui.LiquidSprite.Parent = ui.LiquidLayer
+        -- Secondary lobe breaks the perfect ellipse silhouette so it reads as liquid,
+        -- while staying cheap enough for mobile executors.
+        local lobe = Instance.new("Frame")
+        lobe.Name = "Lobe"
+        lobe.AnchorPoint = Vector2.new(0.5, 0.5)
+        lobe.Size = UDim2.fromScale(0.58, 0.62)
+        lobe.Position = UDim2.fromScale(index % 2 == 0 and 0.31 or 0.69, 0.56)
+        lobe.BackgroundColor3 = index % 2 == 0 and theme.Cyan or theme.Purple
+        lobe.BackgroundTransparency = math.clamp(baseTransparency + 0.04, 0, 0.94)
+        lobe.BorderSizePixel = 0
+        lobe.Active = false
+        lobe.ZIndex = 2
+        lobe.Parent = blob
+        NewCorner(lobe, math.floor(math.min(width, height) * 0.28))
+
+        local lobeGradient = Instance.new("UIGradient")
+        lobeGradient.Color = ColorSequence.new(theme.Purple, theme.Cyan)
+        lobeGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.18),
+            NumberSequenceKeypoint.new(1, 0.72),
+        })
+        lobeGradient.Rotation = math.random(0, 359)
+        lobeGradient.Parent = lobe
 
         task.spawn(function()
-            while Runtime.Alive and ui.LiquidSprite.Parent do
-                for frame = 0, LIQUID_SPRITE.FrameCount - 1 do
-                    if not Runtime.Alive or not ui.LiquidSprite.Parent then
-                        return
-                    end
+            while Runtime.Alive and blob.Parent do
+                local duration = math.random(8, 14)
+                local targetWidth = math.max(145, width + math.random(-34, 42))
+                local targetHeight = math.max(105, height + math.random(-28, 36))
+                local targetTransparency = math.clamp(baseTransparency + math.random(-3, 3) / 100, 0.80, 0.92)
 
-                    local column = frame % LIQUID_SPRITE.Grid
-                    local row = math.floor(frame / LIQUID_SPRITE.Grid)
-                    ui.LiquidSprite.ImageRectOffset = Vector2.new(
-                        column * LIQUID_SPRITE.FrameSize,
-                        row * LIQUID_SPRITE.FrameSize
-                    )
+                local move = Tween(Runtime, blob, duration, {
+                    Position = UDim2.new(
+                        math.random(7, 93) / 100,
+                        0,
+                        math.random(8, 92) / 100,
+                        0
+                    ),
+                    Size = UDim2.fromOffset(targetWidth, targetHeight),
+                    Rotation = math.random(-26, 26),
+                    BackgroundTransparency = targetTransparency,
+                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
-                    task.wait(1 / LIQUID_SPRITE.FPS)
+                Tween(Runtime, gradient, duration, {
+                    Rotation = gradient.Rotation + math.random(45, 110),
+                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+                Tween(Runtime, lobe, duration * 0.88, {
+                    Position = UDim2.fromScale(
+                        index % 2 == 0 and math.random(24, 40) / 100 or math.random(60, 76) / 100,
+                        math.random(42, 66) / 100
+                    ),
+                    Size = UDim2.fromScale(
+                        math.random(50, 68) / 100,
+                        math.random(52, 72) / 100
+                    ),
+                    BackgroundTransparency = math.clamp(targetTransparency + 0.04, 0, 0.95),
+                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+                Tween(Runtime, lobeGradient, duration * 0.92, {
+                    Rotation = lobeGradient.Rotation - math.random(35, 95),
+                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+                if move then
+                    move.Completed:Wait()
+                else
+                    task.wait(0.5)
                 end
             end
         end)
@@ -823,22 +849,25 @@ local function BuildEffects(Runtime, ui, theme, config)
     local particleCount = math.clamp(tonumber(config.ParticleCount) or theme.ParticleCount, 0, 30)
     for index = 1, particleCount do
         local particle = Instance.new("Frame")
-        local px = math.random(2, 5)
+        local px = math.random(2, 4)
         particle.Name = "Particle" .. index
         particle.Size = UDim2.fromOffset(px, px)
         particle.Position = UDim2.new(math.random(2, 98) / 100, 0, math.random(10, 100) / 100, 0)
         particle.BackgroundColor3 = index % 4 == 0 and theme.Purple or theme.Cyan
-        particle.BackgroundTransparency = 0.22 + math.random() * 0.28
+        particle.BackgroundTransparency = 0.14 + math.random() * 0.20
         particle.BorderSizePixel = 0
         particle.Active = false
         particle.ZIndex = 3
         particle.Parent = ui.ParticleLayer
         NewCorner(particle, px)
 
+        local particleGlow = NewStroke(particle, particle.BackgroundColor3, 0.72, 0.6)
+        particleGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
         task.spawn(function()
             while Runtime.Alive and particle.Parent do
                 particle.Position = UDim2.new(math.random(2, 98) / 100, 0, 1.05, 0)
-                particle.BackgroundTransparency = 0.24 + math.random() * 0.22
+                particle.BackgroundTransparency = 0.16 + math.random() * 0.18
                 local travel = Tween(Runtime, particle, math.random(5, 10), {
                     Position = UDim2.new(math.random(2, 98) / 100, 0, -0.08, 0),
                     BackgroundTransparency = 1,
