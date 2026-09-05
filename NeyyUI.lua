@@ -1,6 +1,7 @@
 --// ==============================================================================
 --// NEYY UI // V2 REUSABLE LIBRARY
 --// Dark glass UI | Responsive mobile scale | Tabs | Sections | Controls
+--// Button | Toggle | Input | Dropdown | Slider | ColorPicker | Keybind | Stat | Paragraph | Divider
 --// Minimize pill | Blur | Glitch | Liquid | Particles | Runtime protection
 --// ============================================================================== 
 
@@ -52,13 +53,6 @@ local DEFAULT_THEME = {
 }
 
 local ICONS = {
-    Battle   = "rbxassetid://10734975692",
-    Egg      = "rbxassetid://10723345518",
-    Train    = "rbxassetid://10709752035",
-    Trophy   = "rbxassetid://10747363809",
-    Coach    = "rbxassetid://10747372167",
-    Pet      = "rbxassetid://10709781605",
-    Weapon   = "rbxassetid://10734975486",
     Misc     = "rbxassetid://10734950309",
 
     Check    = "rbxassetid://10709790644",
@@ -79,7 +73,7 @@ local ICONS = {
 
 NeyyUI.Icons = ICONS
 NeyyUI.Theme = DEFAULT_THEME
-NeyyUI.Version = "2.0.0-library"
+NeyyUI.Version = "2.1.0-universal"
 NeyyUI._LastWindow = nil
 
 local function ShallowCopy(source)
@@ -397,6 +391,24 @@ local function BuildTopBar(Runtime, ui, config, theme)
     ui.SubTitleLabel.BackgroundTransparency = 1
     ui.SubTitleLabel.ZIndex = 35
     ui.SubTitleLabel.Parent = ui.TopBar
+end
+
+local function BuildCredit(ui, theme)
+    ui.CreditLabel = Instance.new("TextLabel")
+    ui.CreditLabel.Name = "NeyyUICredit"
+    ui.CreditLabel.Size = UDim2.new(1, -20, 0, 14)
+    ui.CreditLabel.AnchorPoint = Vector2.new(0.5, 1)
+    ui.CreditLabel.Position = UDim2.new(0.5, 0, 1, -4)
+    ui.CreditLabel.BackgroundTransparency = 1
+    ui.CreditLabel.Text = "NeyyUI  \u2022  github.com/Reneyy-dev/NeyyUI"
+    ui.CreditLabel.TextColor3 = theme.Muted
+    ui.CreditLabel.TextTransparency = 0.35
+    ui.CreditLabel.Font = Enum.Font.GothamMedium
+    ui.CreditLabel.TextSize = 8
+    ui.CreditLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ui.CreditLabel.ZIndex = 90
+    ui.CreditLabel.Parent = ui.Main
+    return ui.CreditLabel
 end
 
 local function BuildBody(ui, theme)
@@ -912,6 +924,52 @@ local function BuildEffects(Runtime, ui, theme, config)
     end)
 end
 
+local function SpawnClickBurst(Runtime, parent, accent, originScale)
+    if not Runtime.Alive or not parent or not parent.Parent then
+        return
+    end
+
+    originScale = originScale or Vector2.new(0.5, 0.5)
+    local particleCount = 6
+
+    for _ = 1, particleCount do
+        local particle = Instance.new("Frame")
+        local size = math.random(3, 5)
+        particle.Size = UDim2.fromOffset(size, size)
+        particle.AnchorPoint = Vector2.new(0.5, 0.5)
+        particle.Position = UDim2.fromScale(originScale.X, originScale.Y)
+        particle.BackgroundColor3 = accent
+        particle.BackgroundTransparency = 0.1
+        particle.BorderSizePixel = 0
+        particle.Active = false
+        particle.ZIndex = (parent.ZIndex or 16) + 5
+        particle.Parent = parent
+        NewCorner(particle, size)
+
+        -- Travel stays inside the button's own bounds (ClipsDescendants keeps it contained),
+        -- so this reads as an internal "ripple" confirming the click rather than a stray VFX.
+        local angle = math.random() * math.pi * 2
+        local distanceX = math.random(14, 34)
+        local distanceY = math.random(6, 14)
+        local targetPos = UDim2.new(
+            originScale.X, math.floor(math.cos(angle) * distanceX),
+            originScale.Y, math.floor(math.sin(angle) * distanceY)
+        )
+
+        Tween(Runtime, particle, 0.36, {
+            Position = targetPos,
+            BackgroundTransparency = 1,
+            Size = UDim2.fromOffset(1, 1),
+        }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+        task.delay(0.4, function()
+            if particle and particle.Parent then
+                particle:Destroy()
+            end
+        end)
+    end
+end
+
 local function PlayClick(ui)
     if ui.ClickSound and ui.ClickSound.Parent then
         pcall(function()
@@ -1062,6 +1120,10 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
             buttonRefs.Button.Parent = sectionRefs.Card
             NewCorner(buttonRefs.Button, 7)
 
+            buttonRefs.PunchScale = Instance.new("UIScale")
+            buttonRefs.PunchScale.Scale = 1
+            buttonRefs.PunchScale.Parent = buttonRefs.Button
+
             local accent = options.Color or options.Accent or theme.Cyan
             buttonRefs.Stroke = NewStroke(buttonRefs.Button, accent, 0.48, 1)
 
@@ -1126,6 +1188,11 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
                     return
                 end
                 PlayClick(ui)
+
+                buttonRefs.PunchScale.Scale = 0.92
+                Tween(Runtime, buttonRefs.PunchScale, 0.16, {Scale = 1}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+                SpawnClickBurst(Runtime, buttonRefs.Button, accent)
+
                 SafeCallback(Runtime, options.Name or "Button", options.Callback, control)
             end))
 
@@ -1489,6 +1556,532 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
             return control
         end
 
+        function Section:CreateSlider(options)
+            options = type(options) == "table" and options or {Name = tostring(options)}
+            local min = tonumber(options.Min) or 0
+            local max = tonumber(options.Max) or 100
+            if max <= min then
+                max = min + 1
+            end
+            local increment = tonumber(options.Increment) or 1
+            local accent = options.Color or options.Accent or theme.Cyan
+
+            local sliderRefs = {}
+            sliderRefs.Container = Instance.new("Frame")
+            sliderRefs.Container.Size = UDim2.new(1, 0, 0, 46)
+            sliderRefs.Container.BackgroundColor3 = theme.SurfaceHover
+            sliderRefs.Container.BorderSizePixel = 0
+            sliderRefs.Container.ZIndex = 16
+            sliderRefs.Container.Parent = sectionRefs.Card
+            NewCorner(sliderRefs.Container, 7)
+
+            sliderRefs.Label = Instance.new("TextLabel")
+            sliderRefs.Label.Size = UDim2.new(1, -70, 0, 20)
+            sliderRefs.Label.Position = UDim2.fromOffset(12, 4)
+            sliderRefs.Label.BackgroundTransparency = 1
+            sliderRefs.Label.Text = options.Name or options.Title or "Slider"
+            sliderRefs.Label.TextColor3 = theme.Text
+            sliderRefs.Label.Font = Enum.Font.GothamMedium
+            sliderRefs.Label.TextSize = 10
+            sliderRefs.Label.TextXAlignment = Enum.TextXAlignment.Left
+            sliderRefs.Label.TextTruncate = Enum.TextTruncate.AtEnd
+            sliderRefs.Label.ZIndex = 17
+            sliderRefs.Label.Parent = sliderRefs.Container
+
+            sliderRefs.ValueLabel = Instance.new("TextLabel")
+            sliderRefs.ValueLabel.Size = UDim2.fromOffset(56, 20)
+            sliderRefs.ValueLabel.Position = UDim2.new(1, -66, 0, 4)
+            sliderRefs.ValueLabel.BackgroundTransparency = 1
+            sliderRefs.ValueLabel.Text = tostring(options.Default or min)
+            sliderRefs.ValueLabel.TextColor3 = accent
+            sliderRefs.ValueLabel.Font = Enum.Font.GothamBold
+            sliderRefs.ValueLabel.TextSize = 10
+            sliderRefs.ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+            sliderRefs.ValueLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            sliderRefs.ValueLabel.ZIndex = 17
+            sliderRefs.ValueLabel.Parent = sliderRefs.Container
+
+            sliderRefs.Bar = Instance.new("Frame")
+            sliderRefs.Bar.Size = UDim2.new(1, -24, 0, 6)
+            sliderRefs.Bar.Position = UDim2.new(0, 12, 1, -14)
+            sliderRefs.Bar.BackgroundColor3 = theme.Surface
+            sliderRefs.Bar.BorderSizePixel = 0
+            sliderRefs.Bar.ZIndex = 17
+            sliderRefs.Bar.Parent = sliderRefs.Container
+            NewCorner(sliderRefs.Bar, 3)
+
+            sliderRefs.Fill = Instance.new("Frame")
+            sliderRefs.Fill.Size = UDim2.new(0, 0, 1, 0)
+            sliderRefs.Fill.BackgroundColor3 = accent
+            sliderRefs.Fill.BorderSizePixel = 0
+            sliderRefs.Fill.ZIndex = 18
+            sliderRefs.Fill.Parent = sliderRefs.Bar
+            NewCorner(sliderRefs.Fill, 3)
+
+            sliderRefs.Knob = Instance.new("Frame")
+            sliderRefs.Knob.Size = UDim2.fromOffset(12, 12)
+            sliderRefs.Knob.AnchorPoint = Vector2.new(0.5, 0.5)
+            sliderRefs.Knob.Position = UDim2.new(0, 0, 0.5, 0)
+            sliderRefs.Knob.BackgroundColor3 = theme.Text
+            sliderRefs.Knob.BorderSizePixel = 0
+            sliderRefs.Knob.ZIndex = 19
+            sliderRefs.Knob.Parent = sliderRefs.Bar
+            NewCorner(sliderRefs.Knob, 6)
+            NewStroke(sliderRefs.Knob, accent, 0, 2)
+
+            sliderRefs.HitArea = Instance.new("TextButton")
+            sliderRefs.HitArea.Size = UDim2.new(1, 0, 1, 14)
+            sliderRefs.HitArea.Position = UDim2.new(0, 0, 0, -7)
+            sliderRefs.HitArea.BackgroundTransparency = 1
+            sliderRefs.HitArea.Text = ""
+            sliderRefs.HitArea.AutoButtonColor = false
+            sliderRefs.HitArea.ZIndex = 19
+            sliderRefs.HitArea.Parent = sliderRefs.Bar
+
+            local control = {Refs = sliderRefs, Value = tonumber(options.Default) or min}
+
+            local function RoundToIncrement(value)
+                if increment <= 0 then
+                    return value
+                end
+                return math.floor((value - min) / increment + 0.5) * increment + min
+            end
+
+            local function Render(animated)
+                local duration = animated and theme.TweenFast or 0
+                local alpha = math.clamp((control.Value - min) / (max - min), 0, 1)
+                Tween(Runtime, sliderRefs.Fill, duration, {Size = UDim2.new(alpha, 0, 1, 0)})
+                Tween(Runtime, sliderRefs.Knob, duration, {Position = UDim2.new(alpha, 0, 0.5, 0)})
+                sliderRefs.ValueLabel.Text = options.ValueFormat
+                    and string.format(options.ValueFormat, control.Value)
+                    or tostring(control.Value)
+            end
+
+            function control:Set(value, silent)
+                value = math.clamp(RoundToIncrement(tonumber(value) or min), min, max)
+                if control.Value == value then
+                    Render(true)
+                    return
+                end
+                control.Value = value
+                Render(true)
+                if not silent then
+                    SafeCallback(Runtime, options.Name or "Slider", options.Callback, control.Value)
+                end
+            end
+
+            function control:Get()
+                return control.Value
+            end
+
+            Render(false)
+
+            local dragging = false
+            local function UpdateFromInput(inputX)
+                local barPos = sliderRefs.Bar.AbsolutePosition.X
+                local barSize = sliderRefs.Bar.AbsoluteSize.X
+                if barSize <= 0 then
+                    return
+                end
+                local alpha = math.clamp((inputX - barPos) / barSize, 0, 1)
+                control:Set(min + alpha * (max - min))
+            end
+
+            Track(Runtime, sliderRefs.HitArea.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    UpdateFromInput(input.Position.X)
+                end
+            end))
+
+            Track(Runtime, sliderRefs.HitArea.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end))
+
+            Track(Runtime, UserInputService.InputChanged:Connect(function(input)
+                if not Runtime.Alive or not dragging then
+                    return
+                end
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    UpdateFromInput(input.Position.X)
+                end
+            end))
+
+            return control
+        end
+
+        function Section:CreateColorPicker(options)
+            options = type(options) == "table" and options or {Name = tostring(options)}
+            local defaultColor = typeof(options.Default) == "Color3" and options.Default or Color3.fromRGB(45, 226, 255)
+            local hsv = {}
+            hsv.H, hsv.S, hsv.V = Color3.toHSV(defaultColor)
+
+            local cpRefs = {}
+            cpRefs.Container = Instance.new("Frame")
+            cpRefs.Container.Size = UDim2.new(1, 0, 0, 0)
+            cpRefs.Container.AutomaticSize = Enum.AutomaticSize.Y
+            cpRefs.Container.BackgroundTransparency = 1
+            cpRefs.Container.ZIndex = 16
+            cpRefs.Container.Parent = sectionRefs.Card
+
+            cpRefs.Layout = Instance.new("UIListLayout")
+            cpRefs.Layout.Padding = UDim.new(0, 8)
+            cpRefs.Layout.SortOrder = Enum.SortOrder.LayoutOrder
+            cpRefs.Layout.Parent = cpRefs.Container
+
+            cpRefs.Header = Instance.new("TextButton")
+            cpRefs.Header.Size = UDim2.new(1, 0, 0, 34)
+            cpRefs.Header.BackgroundColor3 = theme.SurfaceHover
+            cpRefs.Header.BorderSizePixel = 0
+            cpRefs.Header.Text = ""
+            cpRefs.Header.AutoButtonColor = false
+            cpRefs.Header.ZIndex = 17
+            cpRefs.Header.Parent = cpRefs.Container
+            NewCorner(cpRefs.Header, 7)
+            cpRefs.HeaderStroke = NewStroke(cpRefs.Header, theme.SurfaceActive, 0, 1)
+
+            cpRefs.Label = Instance.new("TextLabel")
+            cpRefs.Label.Size = UDim2.new(1, -60, 1, 0)
+            cpRefs.Label.Position = UDim2.fromOffset(12, 0)
+            cpRefs.Label.BackgroundTransparency = 1
+            cpRefs.Label.Text = options.Name or options.Title or "Color"
+            cpRefs.Label.TextColor3 = theme.Text
+            cpRefs.Label.Font = Enum.Font.GothamMedium
+            cpRefs.Label.TextSize = 10
+            cpRefs.Label.TextXAlignment = Enum.TextXAlignment.Left
+            cpRefs.Label.TextTruncate = Enum.TextTruncate.AtEnd
+            cpRefs.Label.ZIndex = 18
+            cpRefs.Label.Parent = cpRefs.Header
+
+            cpRefs.Swatch = Instance.new("Frame")
+            cpRefs.Swatch.Size = UDim2.fromOffset(30, 18)
+            cpRefs.Swatch.Position = UDim2.new(1, -42, 0.5, -9)
+            cpRefs.Swatch.BackgroundColor3 = defaultColor
+            cpRefs.Swatch.BorderSizePixel = 0
+            cpRefs.Swatch.ZIndex = 18
+            cpRefs.Swatch.Parent = cpRefs.Header
+            NewCorner(cpRefs.Swatch, 5)
+            NewStroke(cpRefs.Swatch, theme.Text, 0.7, 1)
+
+            cpRefs.Panel = Instance.new("Frame")
+            cpRefs.Panel.Size = UDim2.new(1, 0, 0, 0)
+            cpRefs.Panel.AutomaticSize = Enum.AutomaticSize.Y
+            cpRefs.Panel.BackgroundTransparency = 1
+            cpRefs.Panel.Visible = false
+            cpRefs.Panel.ZIndex = 17
+            cpRefs.Panel.Parent = cpRefs.Container
+
+            cpRefs.PanelLayout = Instance.new("UIListLayout")
+            cpRefs.PanelLayout.Padding = UDim.new(0, 8)
+            cpRefs.PanelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            cpRefs.PanelLayout.Parent = cpRefs.Panel
+
+            cpRefs.SVMap = Instance.new("Frame")
+            cpRefs.SVMap.Size = UDim2.new(1, 0, 0, 110)
+            cpRefs.SVMap.BackgroundColor3 = Color3.fromHSV(hsv.H, 1, 1)
+            cpRefs.SVMap.BorderSizePixel = 0
+            cpRefs.SVMap.ClipsDescendants = true
+            cpRefs.SVMap.ZIndex = 18
+            cpRefs.SVMap.Parent = cpRefs.Panel
+            NewCorner(cpRefs.SVMap, 7)
+
+            cpRefs.SVWhite = Instance.new("Frame")
+            cpRefs.SVWhite.Size = UDim2.fromScale(1, 1)
+            cpRefs.SVWhite.BackgroundColor3 = Color3.new(1, 1, 1)
+            cpRefs.SVWhite.BorderSizePixel = 0
+            cpRefs.SVWhite.ZIndex = 18
+            cpRefs.SVWhite.Parent = cpRefs.SVMap
+            local svWhiteGradient = Instance.new("UIGradient")
+            svWhiteGradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+            svWhiteGradient.Transparency = NumberSequence.new(0, 1)
+            svWhiteGradient.Parent = cpRefs.SVWhite
+
+            cpRefs.SVBlack = Instance.new("Frame")
+            cpRefs.SVBlack.Size = UDim2.fromScale(1, 1)
+            cpRefs.SVBlack.BackgroundColor3 = Color3.new(0, 0, 0)
+            cpRefs.SVBlack.BorderSizePixel = 0
+            cpRefs.SVBlack.ZIndex = 19
+            cpRefs.SVBlack.Parent = cpRefs.SVMap
+            local svBlackGradient = Instance.new("UIGradient")
+            svBlackGradient.Color = ColorSequence.new(Color3.new(0, 0, 0), Color3.new(0, 0, 0))
+            svBlackGradient.Transparency = NumberSequence.new(1, 0)
+            svBlackGradient.Rotation = 90
+            svBlackGradient.Parent = cpRefs.SVBlack
+
+            cpRefs.SVCursor = Instance.new("Frame")
+            cpRefs.SVCursor.Size = UDim2.fromOffset(10, 10)
+            cpRefs.SVCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+            cpRefs.SVCursor.BackgroundTransparency = 1
+            cpRefs.SVCursor.ZIndex = 20
+            cpRefs.SVCursor.Parent = cpRefs.SVMap
+            NewCorner(cpRefs.SVCursor, 5)
+            NewStroke(cpRefs.SVCursor, Color3.new(1, 1, 1), 0, 2)
+
+            cpRefs.SVHit = Instance.new("TextButton")
+            cpRefs.SVHit.Size = UDim2.fromScale(1, 1)
+            cpRefs.SVHit.BackgroundTransparency = 1
+            cpRefs.SVHit.Text = ""
+            cpRefs.SVHit.AutoButtonColor = false
+            cpRefs.SVHit.ZIndex = 21
+            cpRefs.SVHit.Parent = cpRefs.SVMap
+
+            cpRefs.HueBar = Instance.new("Frame")
+            cpRefs.HueBar.Size = UDim2.new(1, 0, 0, 16)
+            cpRefs.HueBar.BorderSizePixel = 0
+            cpRefs.HueBar.ZIndex = 18
+            cpRefs.HueBar.Parent = cpRefs.Panel
+            NewCorner(cpRefs.HueBar, 8)
+
+            local hueGradient = Instance.new("UIGradient")
+            hueGradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0.000, Color3.fromHSV(0 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(0.167, Color3.fromHSV(1 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(0.333, Color3.fromHSV(2 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(0.500, Color3.fromHSV(3 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(0.667, Color3.fromHSV(4 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(0.833, Color3.fromHSV(5 / 6, 1, 1)),
+                ColorSequenceKeypoint.new(1.000, Color3.fromHSV(6 / 6, 1, 1)),
+            })
+            hueGradient.Parent = cpRefs.HueBar
+
+            cpRefs.HueCursor = Instance.new("Frame")
+            cpRefs.HueCursor.Size = UDim2.fromOffset(4, 20)
+            cpRefs.HueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+            cpRefs.HueCursor.Position = UDim2.new(hsv.H, 0, 0.5, 0)
+            cpRefs.HueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+            cpRefs.HueCursor.BorderSizePixel = 0
+            cpRefs.HueCursor.ZIndex = 19
+            cpRefs.HueCursor.Parent = cpRefs.HueBar
+            NewCorner(cpRefs.HueCursor, 2)
+
+            cpRefs.HueHit = Instance.new("TextButton")
+            cpRefs.HueHit.Size = UDim2.new(1, 0, 1, 14)
+            cpRefs.HueHit.Position = UDim2.new(0, 0, 0, -7)
+            cpRefs.HueHit.BackgroundTransparency = 1
+            cpRefs.HueHit.Text = ""
+            cpRefs.HueHit.AutoButtonColor = false
+            cpRefs.HueHit.ZIndex = 19
+            cpRefs.HueHit.Parent = cpRefs.HueBar
+
+            local control = {Refs = cpRefs, Value = defaultColor}
+
+            local function UpdateCursors()
+                cpRefs.SVCursor.Position = UDim2.new(hsv.S, 0, 1 - hsv.V, 0)
+                cpRefs.HueCursor.Position = UDim2.new(hsv.H, 0, 0.5, 0)
+                cpRefs.SVMap.BackgroundColor3 = Color3.fromHSV(hsv.H, 1, 1)
+            end
+
+            local function ApplyColor(silent)
+                control.Value = Color3.fromHSV(hsv.H, hsv.S, hsv.V)
+                cpRefs.Swatch.BackgroundColor3 = control.Value
+                if not silent then
+                    SafeCallback(Runtime, options.Name or "ColorPicker", options.Callback, control.Value)
+                end
+            end
+
+            function control:Set(color, silent)
+                if typeof(color) ~= "Color3" then
+                    return
+                end
+                hsv.H, hsv.S, hsv.V = Color3.toHSV(color)
+                UpdateCursors()
+                ApplyColor(silent)
+            end
+
+            function control:Get()
+                return control.Value
+            end
+
+            UpdateCursors()
+            ApplyColor(true)
+
+            local svDragging = false
+            local function UpdateSV(pos)
+                local abs = cpRefs.SVMap.AbsolutePosition
+                local size = cpRefs.SVMap.AbsoluteSize
+                if size.X <= 0 or size.Y <= 0 then
+                    return
+                end
+                hsv.S = math.clamp((pos.X - abs.X) / size.X, 0, 1)
+                hsv.V = math.clamp(1 - (pos.Y - abs.Y) / size.Y, 0, 1)
+                UpdateCursors()
+                ApplyColor(false)
+            end
+
+            local hueDragging = false
+            local function UpdateHue(x)
+                local abs = cpRefs.HueBar.AbsolutePosition.X
+                local size = cpRefs.HueBar.AbsoluteSize.X
+                if size <= 0 then
+                    return
+                end
+                hsv.H = math.clamp((x - abs) / size, 0, 1)
+                UpdateCursors()
+                ApplyColor(false)
+            end
+
+            Track(Runtime, cpRefs.SVHit.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    svDragging = true
+                    UpdateSV(input.Position)
+                end
+            end))
+
+            Track(Runtime, cpRefs.SVHit.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    svDragging = false
+                end
+            end))
+
+            Track(Runtime, cpRefs.HueHit.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    hueDragging = true
+                    UpdateHue(input.Position.X)
+                end
+            end))
+
+            Track(Runtime, cpRefs.HueHit.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    hueDragging = false
+                end
+            end))
+
+            Track(Runtime, UserInputService.InputChanged:Connect(function(input)
+                if not Runtime.Alive then
+                    return
+                end
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    if svDragging then
+                        UpdateSV(input.Position)
+                    elseif hueDragging then
+                        UpdateHue(input.Position.X)
+                    end
+                end
+            end))
+
+            Track(Runtime, cpRefs.Header.Activated:Connect(function()
+                PlayClick(ui)
+                cpRefs.Panel.Visible = not cpRefs.Panel.Visible
+            end))
+
+            return control
+        end
+
+        function Section:CreateKeybind(options)
+            options = type(options) == "table" and options or {Name = tostring(options)}
+            local kbRefs = {}
+            kbRefs.Container = Instance.new("Frame")
+            kbRefs.Container.Size = UDim2.new(1, 0, 0, 36)
+            kbRefs.Container.BackgroundColor3 = theme.SurfaceHover
+            kbRefs.Container.BorderSizePixel = 0
+            kbRefs.Container.ZIndex = 16
+            kbRefs.Container.Parent = sectionRefs.Card
+            NewCorner(kbRefs.Container, 7)
+
+            kbRefs.Label = Instance.new("TextLabel")
+            kbRefs.Label.Size = UDim2.new(1, -90, 1, 0)
+            kbRefs.Label.Position = UDim2.fromOffset(12, 0)
+            kbRefs.Label.BackgroundTransparency = 1
+            kbRefs.Label.Text = options.Name or options.Title or "Keybind"
+            kbRefs.Label.TextColor3 = theme.Text
+            kbRefs.Label.Font = Enum.Font.GothamMedium
+            kbRefs.Label.TextSize = 10
+            kbRefs.Label.TextXAlignment = Enum.TextXAlignment.Left
+            kbRefs.Label.TextTruncate = Enum.TextTruncate.AtEnd
+            kbRefs.Label.ZIndex = 17
+            kbRefs.Label.Parent = kbRefs.Container
+
+            kbRefs.Button = Instance.new("TextButton")
+            kbRefs.Button.Size = UDim2.fromOffset(76, 24)
+            kbRefs.Button.Position = UDim2.new(1, -86, 0.5, -12)
+            kbRefs.Button.BackgroundColor3 = theme.Surface
+            kbRefs.Button.BorderSizePixel = 0
+            kbRefs.Button.Text = ""
+            kbRefs.Button.AutoButtonColor = false
+            kbRefs.Button.ZIndex = 17
+            kbRefs.Button.Parent = kbRefs.Container
+            NewCorner(kbRefs.Button, 6)
+            kbRefs.ButtonStroke = NewStroke(kbRefs.Button, options.Color or options.Accent or theme.Cyan, 0.5, 1)
+
+            kbRefs.ValueLabel = Instance.new("TextLabel")
+            kbRefs.ValueLabel.Size = UDim2.fromScale(1, 1)
+            kbRefs.ValueLabel.BackgroundTransparency = 1
+            kbRefs.ValueLabel.Font = Enum.Font.GothamBold
+            kbRefs.ValueLabel.TextSize = 9
+            kbRefs.ValueLabel.TextColor3 = theme.Text
+            kbRefs.ValueLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            kbRefs.ValueLabel.ZIndex = 18
+            kbRefs.ValueLabel.Parent = kbRefs.Button
+
+            local control = {Refs = kbRefs, Value = options.Default, Listening = false}
+
+            local function KeyName(key)
+                if not key then
+                    return "None"
+                end
+                return key.Name or tostring(key)
+            end
+
+            local function Render()
+                kbRefs.ValueLabel.Text = control.Listening and "..." or KeyName(control.Value)
+            end
+
+            function control:Set(key, silent)
+                control.Value = key
+                Render()
+                if not silent then
+                    SafeCallback(Runtime, options.Name or "Keybind", options.Callback, control.Value)
+                end
+            end
+
+            function control:Get()
+                return control.Value
+            end
+
+            Render()
+
+            Track(Runtime, kbRefs.Button.Activated:Connect(function()
+                if control.Listening then
+                    return
+                end
+                PlayClick(ui)
+                control.Listening = true
+                Render()
+                Tween(Runtime, kbRefs.ButtonStroke, theme.TweenFast, {Transparency = 0.05})
+            end))
+
+            Track(Runtime, UserInputService.InputBegan:Connect(function(input)
+                if not Runtime.Alive or not control.Listening then
+                    return
+                end
+                if input.UserInputType ~= Enum.UserInputType.Keyboard then
+                    return
+                end
+                control.Listening = false
+                Tween(Runtime, kbRefs.ButtonStroke, theme.TweenFast, {Transparency = 0.5})
+                if input.KeyCode == Enum.KeyCode.Escape then
+                    Render()
+                    return
+                end
+                control:Set(input.KeyCode)
+            end))
+
+            if options.OnPress and options.Default ~= nil or options.OnPress then
+                Track(Runtime, UserInputService.InputBegan:Connect(function(input, processed)
+                    if not Runtime.Alive or control.Listening or processed then
+                        return
+                    end
+                    if control.Value and input.KeyCode == control.Value then
+                        SafeCallback(Runtime, (options.Name or "Keybind") .. "Press", options.OnPress)
+                    end
+                end))
+            end
+
+            return control
+        end
+
         function Section:CreateDivider(options)
             options = type(options) == "table" and options or {}
             local holder = Instance.new("Frame")
@@ -1560,6 +2153,7 @@ function NeyyUI:CreateWindow(config)
     BuildTopBar(Runtime, ui, config, theme)
     BuildFloatingPill(ui, config, theme)
     BuildBody(ui, theme)
+    BuildCredit(ui, theme)
     BuildToast(ui, theme)
     BuildBlur(Runtime, config, theme)
     BuildEffects(Runtime, ui, theme, config)
