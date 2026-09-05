@@ -1,20 +1,22 @@
-# NeyyUI
+# NeyyUI â€” ValueFormat Compatibility Build
 
-A single-file, dependency-free UI library for Roblox UI scripts. Dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls — inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
+This README is aligned with `NeyyUI.lua`, the compatibility build of NeyyUI. It keeps the same single-file, dependency-free UI design while documenting the slider `ValueFormat` syntax explicitly so scripts and AI-generated integrations use the API correctly.
+
+NeyyUI uses a dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls â€” inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
 
 ```lua
 local NeyyUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/<your-username>/NeyyUI/main/NeyyUI.lua"
+    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua"
 ))()
 ```
 
-> Replace `<your-username>` with your actual GitHub username/org before publishing.
+> This compatibility README targets the `Reneyy-dev/NeyyUI` repository and `NeyyUI_ValueFormatCompat.lua` file.
 
 ---
 
 ## Features
 
-- **Universal by design** — no game-specific logic anywhere in the library. Everything (title, icons, tabs, controls) is configured by the script that loads it.
+- **Universal by design** â€” no game-specific logic anywhere in the library. Everything (title, icons, tabs, controls) is configured by the script that loads it.
 - **Full component set**: Window, Tab, Section, Button, Toggle, Input, Dropdown, Slider, ColorPicker, Keybind, Stat, Paragraph, Divider.
 - **Visual polish**: animated glitch title, glass blur background, floating liquid blobs, ambient particles, click-punch animation + in-button particle burst on `Button` clicks.
 - **Mobile-first**: auto-scales to viewport size, touch-friendly drag and hit areas on every interactive element.
@@ -26,7 +28,7 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ## Requirements
 
-- A Roblox executor that supports `loadstring`, `game:HttpGet`, and standard `Instance.new` GUI creation (any modern executor — Synapse-tier, Fluxus, Wave, Delta, etc.).
+- A Roblox executor that supports `loadstring`, `game:HttpGet`, and standard `Instance.new` GUI creation (any modern executor â€” Synapse-tier, Fluxus, Wave, Delta, etc.).
 - No external dependencies. No key system, no third-party libraries. Everything lives in one `.lua` file.
 - Optional: `getgenv()` / `gethui()` support (used automatically if available, falls back gracefully otherwise).
 
@@ -34,16 +36,18 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ## Installation
 
-1. Fork or copy `NeyyUI.lua` into your own GitHub repo (raw-servable, e.g. `raw.githubusercontent.com/...`).
-2. In your script, load it with `loadstring(game:HttpGet("<raw-url>"))()`.
-3. That's it — no build step, no config files needed to get started.
+1. Use `NeyyUI_ValueFormatCompat.lua` as the library file (raw-servable from GitHub).
+2. Load `https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua` with `loadstring(game:HttpGet(...))()`.
+3. That's it â€” no build step, no config files needed to get started.
 
 ---
 
 ## Quick Start
 
 ```lua
-local NeyyUI = loadstring(game:HttpGet("<raw-url-to-NeyyUI.lua>"))()
+local NeyyUI = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua"
+))()
 
 local Window = NeyyUI:CreateWindow({
     Title = "My Hub",
@@ -62,7 +66,7 @@ Section:CreateButton({
 })
 ```
 
-See [`Example.lua`](./Example.lua) in this repo for a full working demo covering every component.
+See [`Example_ValueFormatCompat.lua`](./Example_ValueFormatCompat.lua) for a full working demo. It includes both supported `ValueFormat` styles.
 
 ---
 
@@ -79,18 +83,18 @@ See [`Example.lua`](./Example.lua) in this repo for a full working demo covering
 | `Scale` | number | `0.80` | Base UI scale (auto-clamped to fit small screens) |
 | `Blur` | boolean | `true` | Enable/disable background blur |
 | `BlurStrength` | number | `20` | Blur intensity |
-| `ParticleCount` | number | `22` | Ambient background particles (0–30) |
-| `LiquidCount` | number | `4` | Ambient liquid blobs (0–6) |
-| `Theme` | table | — | Override any `NeyyUI.Theme` color/spacing key |
+| `ParticleCount` | number | `22` | Ambient background particles (0â€“30) |
+| `LiquidCount` | number | `4` | Ambient liquid blobs (0â€“6) |
+| `Theme` | table | â€” | Override any `NeyyUI.Theme` color/spacing key |
 | `RuntimeKey` | string | internal default | Use a custom key to run multiple independent windows at once |
 | `NotifyOnLoad` | boolean | `true` | Show a "loaded" toast automatically |
 | `LoadMessage` | string | `"NeyyUI loaded"` | Text for the load toast |
-| `OnClose` | function | — | Called right before the window is destroyed via the close button |
+| `OnClose` | function | â€” | Called right before the window is destroyed via the close button |
 
 Returns a `Window` object with:
 
-- `Window:CreateTab(config)` → returns a `Tab`
-- `Window:Notify(options)` — `{ Content, Type = "Success"|"Error"|"Warning", Duration, Icon, Color }`
+- `Window:CreateTab(config)` â†’ returns a `Tab`
+- `Window:Notify(options)` â€” `{ Content, Type = "Success"|"Error"|"Warning", Duration, Icon, Color }`
 - `Window:SetTitle(text)`, `Window:SetSubtitle(text)`
 - `Window:Minimize()`, `Window:Restore()`, `Window:IsMinimized()`
 - `Window:Destroy()`
@@ -109,12 +113,81 @@ Returns a `Section`. Every control below is a method on `Section`, all following
 | `CreateToggle` | `Name, Default, Color, Callback(value)` | |
 | `CreateInput` | `Name, Placeholder, Default, ClearTextOnFocus, Callback(text, enterPressed)` | |
 | `CreateDropdown` | `Name, Options, Default, Callback(value)` | `control:Refresh(items, keepValue)` to repopulate |
-| `CreateSlider` | `Name, Min, Max, Default, Increment, ValueFormat, Callback(value)` | Drag or tap along the bar |
+| `CreateSlider` | `Name, Min, Max, Default, Increment, ValueFormat, Callback(value)` | Drag or tap along the bar. `ValueFormat` rules are documented below. |
 | `CreateColorPicker` | `Name, Default (Color3), Callback(color)` | Tap header to expand the hue/SV picker |
 | `CreateKeybind` | `Name, Default (Enum.KeyCode), OnPress, Callback(key)` | Tap the box, then press any key to rebind (`Esc` cancels) |
 | `CreateStat` | `Name, Value, Color` | Read-only label pair, use `control:Set(value)` to update |
 | `CreateParagraph` | `Content` | Wrapped static text block |
 | `CreateDivider` | `Height, Color, Transparency` | Thin separator line |
+
+
+### `CreateSlider` and `ValueFormat`
+
+`ValueFormat` is optional. The compatibility build officially supports **two string styles**:
+
+```lua
+-- Style 1: NeyyUI placeholder
+Section:CreateSlider({
+    Name = "Walk Speed",
+    Min = 16,
+    Max = 200,
+    Default = 50,
+    Increment = 1,
+    ValueFormat = "{value} studs/s",
+    Callback = function(value)
+        print(value)
+    end,
+})
+
+-- Style 2: normal Lua string.format syntax
+Section:CreateSlider({
+    Name = "Multiplier",
+    Min = 0.5,
+    Max = 10,
+    Default = 1,
+    Increment = 0.5,
+    ValueFormat = "%.1fx",
+    Callback = function(value)
+        print(value)
+    end,
+})
+```
+
+Supported examples:
+
+| `ValueFormat` | Example value | Display |
+|---|---:|---|
+| `"{value} studs/s"` | `50` | `50 studs/s` |
+| `"Speed: {value}"` | `50` | `Speed: 50` |
+| `"%d studs/s"` | `50` | `50 studs/s` |
+| `"%g studs/s"` | `50` | `50 studs/s` |
+| `"%s studs/s"` | `50` | `50 studs/s` |
+| `"%.1fx"` | `5.5` | `5.5x` |
+| omitted / `nil` | `50` | `50` |
+
+Important behavior:
+
+- If the string contains the exact literal `{value}`, NeyyUI replaces that token with `tostring(value)`.
+- Otherwise NeyyUI tries `string.format(ValueFormat, value)`.
+- A malformed printf-style format is protected with `pcall`; the display safely falls back to `tostring(value)` instead of crashing the slider.
+- `ValueFormat` is a **string option** in this build. Function-based formatters are not part of the API.
+
+Do **not** use or generate these unsupported placeholder variants:
+
+```lua
+ValueFormat = "${value} studs/s"
+ValueFormat = "{{value}} studs/s"
+ValueFormat = "[value] studs/s"
+ValueFormat = "{value:.1f}x"
+```
+
+Use one of the two official forms instead:
+
+```lua
+ValueFormat = "{value} studs/s"
+-- or
+ValueFormat = "%d studs/s"
+```
 
 ---
 
@@ -122,13 +195,13 @@ Returns a `Section`. Every control below is a method on `Section`, all following
 
 ```
 NeyyUI/
-├── NeyyUI.lua    # The library itself — everything lives in this one file
-├── Example.lua   # Full usage demo covering every component
-├── LICENSE       # MIT License + attribution notice
-└── README.md     # This file
+â”œâ”€â”€ NeyyUI_ValueFormatCompat.lua      # Compatibility library build
+â”œâ”€â”€ Example_ValueFormatCompat.lua     # Full usage demo + ValueFormat examples
+â”œâ”€â”€ README_ValueFormatCompat.md       # Documentation for the compatibility build
+â””â”€â”€ LICENSE                           # MIT License + attribution notice
 ```
 
-There's intentionally no build step or multi-file split — the whole point is that anyone can `loadstring` one raw URL and get the whole library.
+There's intentionally no build step or multi-file split â€” the whole point is that anyone can `loadstring` one raw URL and get the whole library.
 
 ---
 
@@ -149,8 +222,36 @@ Section:CreateButton({ Name = "Buy", Icon = "rbxassetid://1234567890" })
 
 ## Notes for Contributors / AI Agents
 
-- The whole library is one Lua chunk returning a single `NeyyUI` table — there are no external `require`s.
-- Internal helpers (`Tween`, `Track`, `SafeCallback`, `NewCorner`, `NewStroke`, `SpawnClickBurst`, etc.) are local to the file and reused across every control — follow the same pattern (`options` table in → `control` table with `:Set/:Get` out) when adding new components.
+### Strict slider schema
+
+When generating a NeyyUI slider, use these exact option names:
+
+```lua
+Section:CreateSlider({
+    Name = "Example",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Increment = 1,
+    ValueFormat = "{value}%",
+    Callback = function(value)
+        -- game logic here
+    end,
+})
+```
+
+For `ValueFormat`, use only:
+
+```lua
+ValueFormat = "{value}%"
+ValueFormat = "%d%%"
+ValueFormat = "%.1fx"
+```
+
+Do not silently substitute APIs from other UI libraries such as `Range`, `CurrentValue`, `Suffix`, `Minimum`, `Maximum`, `Format`, or Python-style placeholders unless the NeyyUI source explicitly adds support for them.
+
+- The whole library is one Lua chunk returning a single `NeyyUI` table â€” there are no external `require`s.
+- Internal helpers (`Tween`, `Track`, `SafeCallback`, `NewCorner`, `NewStroke`, `SpawnClickBurst`, etc.) are local to the file and reused across every control â€” follow the same pattern (`options` table in â†’ `control` table with `:Set/:Get` out) when adding new components.
 - `Runtime.Alive` must be checked before touching any GUI instance in async code (tweens, `task.spawn`, input callbacks) since the window can be destroyed/re-executed at any time.
 - Config/flag saving (persisting control values to a file) is a planned addition, not yet implemented.
 
@@ -160,7 +261,7 @@ Section:CreateButton({ Name = "Buy", Icon = "rbxassetid://1234567890" })
 
 NeyyUI is released under the [MIT License](./LICENSE) with an additional (non-binding) attribution request: please keep the in-UI credit label and the copyright notice intact if you fork or redistribute this library. See the `LICENSE` file for details.
 
-Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI · github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option — it exists so forks and reposts stay traceable back to the original project.
+Every window built with NeyyUI shows a small, low-opacity credit line at the bottom of the window ("NeyyUI  â€¢  github.com/Reneyy-dev/NeyyUI"). This is baked into the library's source (`BuildCredit`), not a togglable option â€” it exists so forks and reposts stay traceable back to the original project.
 
 ---
 
