@@ -1,10 +1,10 @@
 local NeyyUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI.lua"
+    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua"
 ))()
 
 local Window = NeyyUI:CreateWindow({
-    Title = "NEYY HUB // TEST",
-    Subtitle = "REUSABLE UI LIBRARY",
+    Title = "NEYY HUB // COMPAT TEST",
+    Subtitle = "VALUEFORMAT COMPATIBLE BUILD",
     Icon = "Bolt",
     Scale = 0.80,
     Blur = true,
@@ -66,14 +66,34 @@ Demo:CreateDropdown({
     end,
 })
 
+-- ValueFormat supports TWO official styles in the compatibility build:
+--   1) Placeholder style: "{value} ..."
+--   2) Lua string.format style: "%d ...", "%g ...", "%.1f ...", "%s ..."
+--
+-- Do NOT invent placeholder variants such as ${value}, {{value}},
+-- [value], or {value:.1f}; they are not part of NeyyUI's API.
+
 Demo:CreateSlider({
     Name = "Walk Speed",
     Min = 16,
     Max = 200,
     Default = 16,
     Increment = 1,
+    ValueFormat = "{value} studs/s",
     Callback = function(value)
         Status:Set("Speed: " .. tostring(value))
+    end,
+})
+
+Demo:CreateSlider({
+    Name = "Power Multiplier",
+    Min = 0.5,
+    Max = 10,
+    Default = 1,
+    Increment = 0.5,
+    ValueFormat = "%.1fx",
+    Callback = function(value)
+        Status:Set(string.format("Multiplier: %.1fx", value))
     end,
 })
 
@@ -99,7 +119,7 @@ Demo:CreateKeybind({
 Demo:CreateDivider()
 
 Demo:CreateParagraph({
-    Content = "If every component above shows up and works, NeyyUI is ready to be wired into any game's logic.",
+    Content = "ValueFormat: use either {value} placeholders or normal Lua string.format patterns such as %d, %g, %s, and %.1f. Keep game logic outside the UI library.",
 })
 
 local SettingsTab = Window:CreateTab({
