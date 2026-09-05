@@ -17,6 +17,18 @@ local LocalPlayer = Players.LocalPlayer
 local ENV = (getgenv and getgenv()) or _G
 local DEFAULT_RUNTIME_KEY = "__NEYY_UI_RUNTIME_V2"
 
+local LIQUID_SPRITE = {
+    Url = "https://res.cloudinary.com/kyj7vvub/image/upload/v1788577252/giphy-sprite-sheet.png",
+    FileName = "neyy_liquid_cloudinary.png",
+    SheetSize = 1024,
+    Grid = 7,
+    FrameCount = 48,
+    FPS = 30,
+    Zoom = 1.70,
+    Transparency = 0.70,
+}
+LIQUID_SPRITE.FrameSize = LIQUID_SPRITE.SheetSize / LIQUID_SPRITE.Grid
+
 local DEFAULT_THEME = {
     WindowWidth = 580,
     WindowHeight = 510,
@@ -209,6 +221,7 @@ local function BuildRuntime(runtimeKey)
         Connections = {},
         Gui = nil,
         Blur = nil,
+        TempFiles = {},
         Key = runtimeKey,
         DestroyReason = nil,
     }
@@ -240,6 +253,18 @@ local function BuildRuntime(runtimeKey)
             pcall(function()
                 gui:Destroy()
             end)
+        end
+
+        if type(delfile) == "function" then
+            for index = #Runtime.TempFiles, 1, -1 do
+                local path = Runtime.TempFiles[index]
+                Runtime.TempFiles[index] = nil
+                pcall(function()
+                    delfile(path)
+                end)
+            end
+        else
+            table.clear(Runtime.TempFiles)
         end
 
         if rawget(ENV, runtimeKey) == Runtime then
@@ -725,44 +750,62 @@ local function BuildEffects(Runtime, ui, theme, config)
     ui.LiquidLayer.ZIndex = 2
     ui.LiquidLayer.Parent = ui.Body
 
-    local liquidCount = math.clamp(tonumber(config.LiquidCount) or theme.LiquidCount, 0, 10)
-    for index = 1, liquidCount do
-        local orb = Instance.new("Frame")
-        local size = 100 + index * 30
-        orb.Name = "LiquidOrb" .. index
-        orb.Size = UDim2.fromOffset(size, size)
-        orb.Position = UDim2.new(math.random(8, 88) / 100, -size / 2, math.random(8, 88) / 100, -size / 2)
-        orb.BackgroundColor3 = index % 2 == 0 and theme.Purple or theme.Cyan
-        orb.BackgroundTransparency = 0.84
-        orb.BorderSizePixel = 0
-        orb.Active = false
-        orb.ZIndex = 2
-        orb.Parent = ui.LiquidLayer
-        NewCorner(orb, size / 2)
+    local customAssetFunction = nil
+    if type(getcustomasset) == "function" then
+        customAssetFunction = getcustomasset
+    elseif type(getsynasset) == "function" then
+        customAssetFunction = getsynasset
+    end
 
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new(theme.Cyan, theme.Purple)
-        gradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.12),
-            NumberSequenceKeypoint.new(1, 0.70),
-        })
-        gradient.Rotation = index * 51
-        gradient.Parent = orb
+    local liquidAsset = nil
+    if type(writefile) == "function" and customAssetFunction then
+        local ok, result = pcall(function()
+            local bytes = game:HttpGet(LIQUID_SPRITE.Url, true)
+            writefile(LIQUID_SPRITE.FileName, bytes)
+            table.insert(Runtime.TempFiles, LIQUID_SPRITE.FileName)
+            return customAssetFunction(LIQUID_SPRITE.FileName)
+        end)
+
+        if ok then
+            liquidAsset = result
+        else
+            warn("[NeyyUI] Liquid sprite load failed: " .. tostring(result))
+        end
+    else
+        warn("[NeyyUI] Liquid sprite unavailable: executor requires writefile + getcustomasset/getsynasset")
+    end
+
+    if liquidAsset then
+        ui.LiquidSprite = Instance.new("ImageLabel")
+        ui.LiquidSprite.Name = "LiquidSprite"
+        ui.LiquidSprite.AnchorPoint = Vector2.new(0.5, 0.5)
+        ui.LiquidSprite.Position = UDim2.fromScale(0.5, 0.5)
+        ui.LiquidSprite.Size = UDim2.fromScale(LIQUID_SPRITE.Zoom, LIQUID_SPRITE.Zoom)
+        ui.LiquidSprite.BackgroundTransparency = 1
+        ui.LiquidSprite.Image = liquidAsset
+        ui.LiquidSprite.ImageTransparency = LIQUID_SPRITE.Transparency
+        ui.LiquidSprite.ScaleType = Enum.ScaleType.Stretch
+        ui.LiquidSprite.ImageRectSize = Vector2.new(LIQUID_SPRITE.FrameSize, LIQUID_SPRITE.FrameSize)
+        ui.LiquidSprite.ImageRectOffset = Vector2.new(0, 0)
+        ui.LiquidSprite.Active = false
+        ui.LiquidSprite.ZIndex = 2
+        ui.LiquidSprite.Parent = ui.LiquidLayer
 
         task.spawn(function()
-            local grow = false
-            while Runtime.Alive and orb.Parent do
-                grow = not grow
-                local targetSize = size + (grow and 26 or 0)
-                local move = Tween(Runtime, orb, math.random(7, 12), {
-                    Position = UDim2.new(math.random(8, 92) / 100, -targetSize / 2, math.random(6, 92) / 100, -targetSize / 2),
-                    Size = UDim2.fromOffset(targetSize, targetSize),
-                    BackgroundTransparency = grow and 0.80 or 0.87,
-                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-                if move then
-                    move.Completed:Wait()
-                else
-                    task.wait(0.5)
+            while Runtime.Alive and ui.LiquidSprite.Parent do
+                for frame = 0, LIQUID_SPRITE.FrameCount - 1 do
+                    if not Runtime.Alive or not ui.LiquidSprite.Parent then
+                        return
+                    end
+
+                    local column = frame % LIQUID_SPRITE.Grid
+                    local row = math.floor(frame / LIQUID_SPRITE.Grid)
+                    ui.LiquidSprite.ImageRectOffset = Vector2.new(
+                        column * LIQUID_SPRITE.FrameSize,
+                        row * LIQUID_SPRITE.FrameSize
+                    )
+
+                    task.wait(1 / LIQUID_SPRITE.FPS)
                 end
             end
         end)
@@ -1236,7 +1279,7 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
             dropdownRefs.Arrow.Size = UDim2.fromOffset(24, 34)
             dropdownRefs.Arrow.Position = UDim2.new(1, -30, 0, 0)
             dropdownRefs.Arrow.BackgroundTransparency = 1
-            dropdownRefs.Arrow.Text = "⌄"
+            dropdownRefs.Arrow.Text = "▼"
             dropdownRefs.Arrow.TextColor3 = theme.Muted
             dropdownRefs.Arrow.Font = Enum.Font.GothamBold
             dropdownRefs.Arrow.TextSize = 14
@@ -1271,7 +1314,7 @@ local function MakeTab(Runtime, ui, theme, window, state, config)
             local function SetOpen(value)
                 control.Open = value == true
                 dropdownRefs.Options.Visible = control.Open
-                dropdownRefs.Arrow.Text = control.Open and "⌃" or "⌄"
+                dropdownRefs.Arrow.Text = control.Open and "▲" or "▼"
                 Tween(Runtime, dropdownRefs.Stroke, theme.TweenFast, {
                     Transparency = control.Open and 0.12 or 0.52,
                 })
