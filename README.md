@@ -6,11 +6,11 @@ NeyyUI uses a dark glass aesthetic, mobile-responsive scaling, drag/minimize sup
 
 ```lua
 local NeyyUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua"
+    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI.lua"
 ))()
 ```
 
-> This compatibility README targets the `Reneyy-dev/NeyyUI` repository and `NeyyUI_ValueFormatCompat.lua` file.
+> This compatibility README targets the `Reneyy-dev/NeyyUI` repository and `NeyyUI.lua` file.
 
 ---
 
@@ -36,8 +36,8 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ## Installation
 
-1. Use `NeyyUI_ValueFormatCompat.lua` as the library file (raw-servable from GitHub).
-2. Load `https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua` with `loadstring(game:HttpGet(...))()`.
+1. Use `NeyyUI.lua` as the library file (raw-servable from GitHub).
+2. Load `https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI.lua` with `loadstring(game:HttpGet(...))()`.
 3. That's it — no build step, no config files needed to get started.
 
 ---
@@ -46,7 +46,7 @@ local NeyyUI = loadstring(game:HttpGet(
 
 ```lua
 local NeyyUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI_ValueFormatCompat.lua"
+    "https://raw.githubusercontent.com/Reneyy-dev/NeyyUI/refs/heads/main/NeyyUI.lua"
 ))()
 
 local Window = NeyyUI:CreateWindow({
@@ -66,7 +66,7 @@ Section:CreateButton({
 })
 ```
 
-See [`Example_ValueFormatCompat.lua`](./Example_ValueFormatCompat.lua) for a full working demo. It includes both supported `ValueFormat` styles.
+See [`Example.lua`](./Example.lua) for a full working demo. It includes both supported `ValueFormat` styles.
 
 ---
 
@@ -195,9 +195,9 @@ ValueFormat = "%d studs/s"
 
 ```
 NeyyUI/
-├── NeyyUI_ValueFormatCompat.lua      # Compatibility library build
-├── Example_ValueFormatCompat.lua     # Full usage demo + ValueFormat examples
-├── README_ValueFormatCompat.md       # Documentation for the compatibility build
+├── NeyyUI.lua      # Compatibility library build
+├── Example.lua     # Full usage demo + ValueFormat examples
+├── README.md       # Documentation for the compatibility build
 └── LICENSE                           # MIT License + attribution notice
 ```
 
