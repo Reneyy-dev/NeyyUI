@@ -1237,113 +1237,135 @@ local function BuildEffects(Runtime, ui, theme, config)
     ui.LiquidLayer.ZIndex = 2
     ui.LiquidLayer.Parent = ui.Body
 
+    -- V5 Ripple Field replaces the old large liquid blobs.
+    -- LiquidCount is preserved as the density/concurrency control so existing
+    -- NeyyUI configs keep the same public behavior.
     local liquidCount = math.clamp(tonumber(config.LiquidCount) or theme.LiquidCount, 0, 6)
-    for index = 1, liquidCount do
-        local blob = Instance.new("Frame")
-        local width = math.random(170, 290)
-        local height = math.random(120, 235)
-        local baseTransparency = 0.84 + math.random() * 0.05
 
-        blob.Name = "LiquidBlob" .. index
-        blob.AnchorPoint = Vector2.new(0.5, 0.5)
-        blob.Size = UDim2.fromOffset(width, height)
-        blob.Position = UDim2.new(
-            math.random(8, 92) / 100,
-            0,
-            math.random(10, 90) / 100,
-            0
-        )
-        blob.BackgroundColor3 = index % 2 == 0 and theme.Purple or theme.Cyan
-        blob.BackgroundTransparency = baseTransparency
-        blob.BorderSizePixel = 0
-        blob.Rotation = math.random(-18, 18)
-        blob.Active = false
-        blob.ZIndex = 2
-        blob.Parent = ui.LiquidLayer
-        NewCorner(blob, math.floor(math.min(width, height) / 2))
+    if liquidCount > 0 then
+        local rippleColors = {theme.Cyan, theme.Purple, theme.Rose}
+        local activeRipples = 0
+        local maxConcurrent = math.max(1, liquidCount * 2)
 
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, theme.Cyan),
-            ColorSequenceKeypoint.new(0.52, theme.Purple),
-            ColorSequenceKeypoint.new(1, theme.Rose),
-        })
-        gradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.10),
-            NumberSequenceKeypoint.new(0.55, 0.28),
-            NumberSequenceKeypoint.new(1, 0.62),
-        })
-        gradient.Rotation = math.random(0, 359)
-        gradient.Parent = blob
+        -- V5 test used a 0.35s spawn interval and ~1.8-2.6s lifetime.
+        -- This integrated version intentionally moves much slower and fades in
+        -- before fading out so every ripple appears softly instead of popping.
+        local baseSpawnMin = 0.90
+        local baseSpawnMax = 1.30
+        local densityScale = math.clamp(4 / liquidCount, 0.72, 2.20)
 
-        -- Secondary lobe breaks the perfect ellipse silhouette so it reads as liquid,
-        -- while staying cheap enough for mobile executors.
-        local lobe = Instance.new("Frame")
-        lobe.Name = "Lobe"
-        lobe.AnchorPoint = Vector2.new(0.5, 0.5)
-        lobe.Size = UDim2.fromScale(0.58, 0.62)
-        lobe.Position = UDim2.fromScale(index % 2 == 0 and 0.31 or 0.69, 0.56)
-        lobe.BackgroundColor3 = index % 2 == 0 and theme.Cyan or theme.Purple
-        lobe.BackgroundTransparency = math.clamp(baseTransparency + 0.04, 0, 0.94)
-        lobe.BorderSizePixel = 0
-        lobe.Active = false
-        lobe.ZIndex = 2
-        lobe.Parent = blob
-        NewCorner(lobe, math.floor(math.min(width, height) * 0.28))
+        local function SpawnRipple()
+            if not Runtime.Alive or not ui.LiquidLayer.Parent then
+                return
+            end
 
-        local lobeGradient = Instance.new("UIGradient")
-        lobeGradient.Color = ColorSequence.new(theme.Purple, theme.Cyan)
-        lobeGradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.18),
-            NumberSequenceKeypoint.new(1, 0.72),
-        })
-        lobeGradient.Rotation = math.random(0, 359)
-        lobeGradient.Parent = lobe
+            if activeRipples >= maxConcurrent then
+                return
+            end
+
+            activeRipples += 1
+
+            local color = rippleColors[math.random(1, #rippleColors)]
+            local originX = math.random(8, 92) / 100
+            local originY = math.random(10, 90) / 100
+            local startSize = math.random(14, 26)
+            local endSize = math.random(210, 340)
+            local life = math.random(48, 68) / 10
+            local fadeInTime = math.random(50, 75) / 100
+            local visibleTransparency = math.random(28, 48) / 100
+
+            local ring = Instance.new("Frame")
+            ring.Name = "LiquidRipple"
+            ring.AnchorPoint = Vector2.new(0.5, 0.5)
+            ring.Position = UDim2.fromScale(originX, originY)
+            ring.Size = UDim2.fromOffset(startSize, startSize)
+            ring.BackgroundTransparency = 1
+            ring.BorderSizePixel = 0
+            ring.Active = false
+            ring.ZIndex = 2
+            ring.Parent = ui.LiquidLayer
+            NewCorner(ring, 9999)
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Name = "RippleStroke"
+            stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            stroke.Color = color
+            stroke.Thickness = math.random(15, 22) / 10
+            stroke.Transparency = 1
+            stroke.Parent = ring
+
+            -- A subtle grayscale-to-theme gradient keeps the ripple from reading
+            -- as a flat perfect ring while remaining much cheaper than pixel noise.
+            local gradient = Instance.new("UIGradient")
+            gradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, color:Lerp(Color3.new(1, 1, 1), 0.16)),
+                ColorSequenceKeypoint.new(0.50, color),
+                ColorSequenceKeypoint.new(1, color:Lerp(Color3.new(0, 0, 0), 0.16)),
+            })
+            gradient.Rotation = math.random(0, 359)
+            gradient.Parent = stroke
+
+            local expandTween = Tween(Runtime, ring, life, {
+                Size = UDim2.fromOffset(endSize, endSize),
+            }, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+            Tween(Runtime, gradient, life, {
+                Rotation = gradient.Rotation + math.random(35, 75),
+            }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+            -- Fade IN on every spawn.
+            local fadeInTween = Tween(Runtime, stroke, fadeInTime, {
+                Transparency = visibleTransparency,
+            }, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+            task.spawn(function()
+                if fadeInTween then
+                    fadeInTween.Completed:Wait()
+                else
+                    task.wait(fadeInTime)
+                end
+
+                if not Runtime.Alive or not ring.Parent then
+                    return
+                end
+
+                -- Then spend the rest of its life slowly fading away.
+                local fadeOutTime = math.max(0.25, life - fadeInTime)
+                Tween(Runtime, stroke, fadeOutTime, {
+                    Transparency = 1,
+                    Thickness = 0.35,
+                }, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+            end)
+
+            task.spawn(function()
+                if expandTween then
+                    expandTween.Completed:Wait()
+                else
+                    task.wait(life)
+                end
+
+                if ring.Parent then
+                    ring:Destroy()
+                end
+
+                activeRipples = math.max(0, activeRipples - 1)
+            end)
+        end
 
         task.spawn(function()
-            while Runtime.Alive and blob.Parent do
-                local duration = math.random(8, 14)
-                local targetWidth = math.max(145, width + math.random(-34, 42))
-                local targetHeight = math.max(105, height + math.random(-28, 36))
-                local targetTransparency = math.clamp(baseTransparency + math.random(-3, 3) / 100, 0.80, 0.92)
+            -- Small initial delay prevents the effect from hard-popping during
+            -- the same frame the main NeyyUI body is created.
+            task.wait(0.20)
 
-                local move = Tween(Runtime, blob, duration, {
-                    Position = UDim2.new(
-                        math.random(7, 93) / 100,
-                        0,
-                        math.random(8, 92) / 100,
-                        0
-                    ),
-                    Size = UDim2.fromOffset(targetWidth, targetHeight),
-                    Rotation = math.random(-26, 26),
-                    BackgroundTransparency = targetTransparency,
-                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            while Runtime.Alive and ui.LiquidLayer.Parent do
+                SpawnRipple()
 
-                Tween(Runtime, gradient, duration, {
-                    Rotation = gradient.Rotation + math.random(45, 110),
-                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+                local interval = (
+                    baseSpawnMin
+                    + math.random() * (baseSpawnMax - baseSpawnMin)
+                ) * densityScale
 
-                Tween(Runtime, lobe, duration * 0.88, {
-                    Position = UDim2.fromScale(
-                        index % 2 == 0 and math.random(24, 40) / 100 or math.random(60, 76) / 100,
-                        math.random(42, 66) / 100
-                    ),
-                    Size = UDim2.fromScale(
-                        math.random(50, 68) / 100,
-                        math.random(52, 72) / 100
-                    ),
-                    BackgroundTransparency = math.clamp(targetTransparency + 0.04, 0, 0.95),
-                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-
-                Tween(Runtime, lobeGradient, duration * 0.92, {
-                    Rotation = lobeGradient.Rotation - math.random(35, 95),
-                }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-
-                if move then
-                    move.Completed:Wait()
-                else
-                    task.wait(0.5)
-                end
+                task.wait(interval)
             end
         end)
     end
