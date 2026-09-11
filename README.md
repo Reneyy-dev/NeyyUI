@@ -5,7 +5,7 @@ This README is aligned with `NeyyUI.lua`, the compatibility build of NeyyUI. It 
 NeyyUI uses a dark glass aesthetic, mobile-responsive scaling, drag/minimize support, and a full set of interactive controls — inspired by [Rayfield](https://sirius.menu/rayfield) and [WindUI](https://wind-ui.com/), built to be usable in **any** game, not just one.
 
 <p align="center">
-  <a href="https://discord.gg/5wgrz639a">
+  <a href="https://discord.gg/nW5DuksuJ">
     <img src="./neyy-library.png" alt="NEYY Library" width="100%">
   </a>
 </p>
